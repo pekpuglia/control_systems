@@ -41,7 +41,12 @@ impl<I:Copy, M, O, DS1: DynamicalSystem<Input = I, Output = M>, DS2: DynamicalSy
     }
 
     fn y(&self, t: f64, x: DVector<f64>, u: Self::Input) -> Self::Output {
-        todo!()
+        self.dynsys2.y(
+            t, 
+            x.rows(
+                DS1::STATE_VECTOR_SIZE, 
+                DS2::STATE_VECTOR_SIZE).into(), 
+            self.dynsys1.y(t, x.rows(0, DS1::STATE_VECTOR_SIZE).into(), u))
     }
 
     const STATE_VECTOR_SIZE: usize = DS1::STATE_VECTOR_SIZE + DS2::STATE_VECTOR_SIZE;
@@ -51,5 +56,44 @@ impl<I:Copy, M, O, DS1: DynamicalSystem<Input = I, Output = M>, DS2: DynamicalSy
 mod tests {
     use super::*;
 
-    
+    struct Exp {
+        alpha: f64
+    }
+
+    impl DynamicalSystem for Exp {
+        const STATE_VECTOR_SIZE: usize = 1;
+
+        type Input = f64;
+
+        type Output = f64;
+
+        fn xdot(&self, t: f64, x: DVector<f64>, u: Self::Input) -> DVector<f64> {
+            DVector::from_element(Self::STATE_VECTOR_SIZE, self.alpha * (u - x[0]))
+        }
+
+        fn y(&self, t: f64, x: DVector<f64>, u: Self::Input) -> Self::Output {
+            x[0]
+        }
+    }
+
+    #[test]
+    fn test_series_xdot() {
+        let series = Series {
+            dynsys1: Exp{alpha: 0.5},
+            dynsys2: Exp{alpha: 0.7}
+        };
+
+        let xdot = series.xdot(0.0, DVector::from_element(2, 0.0), 1.0);
+        assert!(xdot == DVector::from_row_slice(&[0.5, 0.0]))
+    }
+
+    #[test]
+    fn test_series_output() {
+        let series = Series {
+            dynsys1: Exp{alpha: 0.5},
+            dynsys2: Exp{alpha: 0.7}
+        };
+        let out = series.y(0.0, DVector::from_row_slice(&[0.5, 0.7]), 1.0);
+        assert!(out == 0.7)
+    }
 }
