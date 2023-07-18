@@ -46,7 +46,7 @@ impl<const SVS1: usize,
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use nalgebra::DVector;
     struct Exp {
         alpha: f64
     }

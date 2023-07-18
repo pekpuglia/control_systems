@@ -3,29 +3,23 @@ use crate::*;
 use eqsolver::multivariable::MultiVarNewtonFD;
 
 //direct dynamical system, reverse dynamical system
-struct NegativeFeedback<DDS, RDS> {
+struct NegativeFeedback<DDS, RDS, const DSVS: usize, const RSVS: usize> {
     dirsys: DDS,
     revsys: RDS
 }
 
-impl<InputAndReverseOutput, OutputAndReverseInput, DDS, RDS> 
-    DynamicalSystem for NegativeFeedback<DDS, RDS> 
+impl<const DSVS: usize, const RSVS: usize, const IS: usize, const OS: usize, DDS, RDS> 
+    DynamicalSystem<{DSVS+RSVS}, IS, OS> for NegativeFeedback<DDS, RDS, DSVS, RSVS> 
 where
-    DDS: DynamicalSystem<Input = InputAndReverseOutput, Output = OutputAndReverseInput>,
-    RDS: DynamicalSystem<Input = OutputAndReverseInput, Output = InputAndReverseOutput>    
+    DDS: DynamicalSystem<DSVS, IS, OS>,
+    RDS: DynamicalSystem<RSVS, OS, IS>    
 {
-    const STATE_VECTOR_SIZE: usize = DDS::STATE_VECTOR_SIZE + RDS::STATE_VECTOR_SIZE;
-
-    type Input = InputAndReverseOutput;
-
-    type Output = OutputAndReverseInput;
-
-    fn xdot(&self, t: f64, x: DVector<f64>, u: Self::Input) -> DVector<f64> {
+    fn xdot(&self, t: f64, x: SVector<f64, {DSVS+RSVS}>, u: SVector<f64, IS>) -> SVector<f64, {DSVS+RSVS}> {
         todo!()
     }
 
     //this is most likely only an approximation
-    fn y(&self, t: f64, x: DVector<f64>, u: Self::Input) -> Self::Output {
+    fn y(&self, t: f64, x: SVector<f64, {DSVS + RSVS}>, u: SVector<f64, IS>) -> SVector<f64, OS> {
         // MultiVarNewtonFD::new(
         //     |output| output
         // )

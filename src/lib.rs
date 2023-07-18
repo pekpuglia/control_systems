@@ -1,18 +1,17 @@
 #![feature(generic_const_exprs)]
-use ode_solvers::{self, DVector, SVector};
-use nalgebra::{Vector, Vector2, ArrayStorage, ToConst};
+use ode_solvers::{self, SVector};
 
 trait DynamicalSystem<
-    const StateVectorSize: usize,
-    const InputSize      : usize,
-    const OutputSize     : usize> {
+    const STATE_VECTOR_SIZE: usize,
+    const INPUT_SIZE      : usize,
+    const OUTPUT_SIZE     : usize> {
 
     fn xdot(&self, t: f64, 
-        x: SVector<f64, StateVectorSize>, 
-        u: SVector<f64, InputSize>) -> SVector<f64, StateVectorSize>;
+        x: SVector<f64, STATE_VECTOR_SIZE>, 
+        u: SVector<f64, INPUT_SIZE>) -> SVector<f64, STATE_VECTOR_SIZE>;
     fn y(&self, t: f64, 
-        x: SVector<f64, StateVectorSize>, 
-        u: SVector<f64, InputSize>) -> SVector<f64, OutputSize>;
+        x: SVector<f64, STATE_VECTOR_SIZE>, 
+        u: SVector<f64, INPUT_SIZE>) -> SVector<f64, OUTPUT_SIZE>;
 }
 
 mod series;
