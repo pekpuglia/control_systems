@@ -1,5 +1,7 @@
 use crate::*;
 
+use eqsolver::multivariable::MultiVarNewtonFD;
+
 //direct dynamical system, reverse dynamical system
 struct NegativeFeedback<DDS, RDS> {
     dirsys: DDS,
@@ -22,7 +24,13 @@ where
         todo!()
     }
 
+    //this is most likely only an approximation
     fn y(&self, t: f64, x: DVector<f64>, u: Self::Input) -> Self::Output {
+        // MultiVarNewtonFD::new(
+        //     |output| output
+        // )
+        // .solve(self.dirsys.y(t, x, u))
+        // .unwrap()
         todo!()
     }
 }
