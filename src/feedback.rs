@@ -20,11 +20,10 @@ where
 
     //this is most likely only an approximation
     fn y(&self, t: f64, x: SVector<f64, {DSVS + RSVS}>, u: SVector<f64, IS>) -> SVector<f64, OS> {
-        // MultiVarNewtonFD::new(
-        //     |output| output
-        // )
-        // .solve(self.dirsys.y(t, x, u))
-        // .unwrap()
-        todo!()
+        MultiVarNewtonFD::new(
+            |output| output
+        )
+        .solve(self.dirsys.y(t, x, u))
+        .unwrap()
     }
 }

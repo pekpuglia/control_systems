@@ -1,6 +1,5 @@
 #![feature(generic_const_exprs)]
-use ode_solvers::{self, SVector};
-
+use nalgebra::SVector;
 trait DynamicalSystem<
     const STATE_VECTOR_SIZE: usize,
     const INPUT_SIZE      : usize,
