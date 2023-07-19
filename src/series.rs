@@ -1,7 +1,14 @@
 use crate::*;
-pub struct Series<DS1, DS2, const SVS1: usize, const SVS2: usize, const OS1IS2: usize> {
+pub struct Series<DS1, DS2, const SVS1: usize, const SVS2: usize, const OS1IS2: usize>
+{
     dynsys1: DS1,
     dynsys2: DS2
+}
+
+impl<DS1, DS2, const SVS1: usize, const SVS2: usize, const OS1IS2: usize> Series<DS1, DS2, SVS1, SVS2, OS1IS2> {
+    fn new(dynsys1: DS1, dynsys2: DS2) -> Series<DS1, DS2, SVS1, SVS2, OS1IS2> {
+        Series { dynsys1, dynsys2 }
+    }
 }
 
 impl<const SVS1: usize, 
