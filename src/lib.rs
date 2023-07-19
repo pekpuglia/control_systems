@@ -1,5 +1,7 @@
 #![feature(generic_const_exprs)]
 use nalgebra::SVector;
+
+//problema: pode ter mais de 1 implementação por tipo p parâmetros genéricos diferentes
 trait DynamicalSystem<
     const STATE_VECTOR_SIZE: usize,
     const INPUT_SIZE      : usize,
