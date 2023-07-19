@@ -1,10 +1,9 @@
 use crate::*;
 
 use eqsolver::multivariable::MultiVarNewtonFD;
-use nalgebra::Dyn;
 
 //direct dynamical system, reverse dynamical system
-struct NegativeFeedback<DDS, RDS, const DSVS: usize, const RSVS: usize, const IS: usize, const OS: usize> {
+pub struct NegativeFeedback<DDS, RDS, const DSVS: usize, const RSVS: usize, const IS: usize, const OS: usize> {
     dirsys: DDS,
     revsys: RDS
 }
@@ -52,7 +51,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use nalgebra::ComplexField;
 
     use crate::DynamicalSystem;
     use super::*;
