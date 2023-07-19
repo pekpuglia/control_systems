@@ -1,8 +1,8 @@
 #![feature(generic_const_exprs)]
-use nalgebra::SVector;
+pub use nalgebra::SVector;
 
 //problema: pode ter mais de 1 implementação por tipo p parâmetros genéricos diferentes
-trait DynamicalSystem<
+pub trait DynamicalSystem<
     const STATE_VECTOR_SIZE: usize,
     const INPUT_SIZE      : usize,
     const OUTPUT_SIZE     : usize> {
@@ -16,4 +16,8 @@ trait DynamicalSystem<
 }
 
 mod series;
+pub use series::Series;
+
+
 mod feedback;
+pub use feedback::NegativeFeedback;
