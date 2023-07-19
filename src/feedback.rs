@@ -2,7 +2,7 @@ use crate::*;
 
 use eqsolver::multivariable::MultiVarNewtonFD;
 
-struct UnitySystem<const SIZE: usize>;
+pub struct UnitySystem<const SIZE: usize>;
 
 impl<const SIZE: usize> DynamicalSystem<0, SIZE, SIZE> for UnitySystem<SIZE> {
     fn xdot(&self, t: f64, 
@@ -45,11 +45,11 @@ where
             )
     }
 
-    fn new(dirsys: DDS, revsys: RDS) -> NegativeFeedback<DDS, RDS, DSVS, RSVS, IS, OS> {
+    pub fn new(dirsys: DDS, revsys: RDS) -> NegativeFeedback<DDS, RDS, DSVS, RSVS, IS, OS> {
         NegativeFeedback { dirsys, revsys }
     }
 
-    fn new_unity_feedback<SquareDS>(dirsys: SquareDS) -> NegativeFeedback<SquareDS, UnitySystem<IS>, DSVS, 0, IS, IS>
+    pub fn new_unity_feedback<SquareDS>(dirsys: SquareDS) -> NegativeFeedback<SquareDS, UnitySystem<IS>, DSVS, 0, IS, IS>
     where
         SquareDS: DynamicalSystem<DSVS, IS, IS>,
     {
