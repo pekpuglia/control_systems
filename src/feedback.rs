@@ -2,6 +2,22 @@ use crate::*;
 
 use eqsolver::multivariable::MultiVarNewtonFD;
 
+struct UnitySystem<const SIZE: usize>;
+
+impl<const SIZE: usize> DynamicalSystem<0, SIZE, SIZE> for UnitySystem<SIZE> {
+    fn xdot(&self, t: f64, 
+        x: SVector<f64, 0>, 
+        u: SVector<f64, SIZE>) -> SVector<f64, 0> {
+        [].into()
+    }
+
+    fn y(&self, t: f64, 
+        x: SVector<f64, 0>, 
+        u: SVector<f64, SIZE>) -> SVector<f64, SIZE> {
+        u
+    }
+}
+
 //direct dynamical system, reverse dynamical system
 pub struct NegativeFeedback<DDS, RDS, const DSVS: usize, const RSVS: usize, const IS: usize, const OS: usize> 
 where
@@ -27,6 +43,18 @@ where
                 SVector::from_row_slice(x.fixed_rows::<RSVS>(DSVS).data.into_slice()), 
                 y)
             )
+    }
+
+    fn new(dirsys: DDS, revsys: RDS) -> NegativeFeedback<DDS, RDS, DSVS, RSVS, IS, OS> {
+        NegativeFeedback { dirsys, revsys }
+    }
+
+    fn new_unity_feedback<SquareDS>(dirsys: SquareDS) -> NegativeFeedback<SquareDS, UnitySystem<IS>, DSVS, 0, IS, IS>
+    where
+        SquareDS: DynamicalSystem<DSVS, IS, IS>,
+    {
+        NegativeFeedback{ dirsys, 
+            revsys: UnitySystem{} }
     }
 }
 
