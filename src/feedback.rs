@@ -5,14 +5,14 @@ use eqsolver::multivariable::MultiVarNewtonFD;
 pub struct UnitySystem<const SIZE: usize>;
 
 impl<const SIZE: usize> DynamicalSystem<0, SIZE, SIZE> for UnitySystem<SIZE> {
-    fn xdot(&self, t: f64, 
-        x: SVector<f64, 0>, 
-        u: SVector<f64, SIZE>) -> SVector<f64, 0> {
+    fn xdot(&self, _t: f64, 
+        _x: SVector<f64, 0>, 
+        _u: SVector<f64, SIZE>) -> SVector<f64, 0> {
         [].into()
     }
 
-    fn y(&self, t: f64, 
-        x: SVector<f64, 0>, 
+    fn y(&self, _t: f64, 
+        _x: SVector<f64, 0>, 
         u: SVector<f64, SIZE>) -> SVector<f64, SIZE> {
         u
     }
@@ -116,14 +116,14 @@ mod tests {
     }
 
     impl DynamicalSystem<0, 1, 1> for LinearFunc {
-        fn xdot(&self, t: f64, 
-            x: nalgebra::SVector<f64, 0>, 
-            u: nalgebra::SVector<f64, 1>) -> nalgebra::SVector<f64, 0> {
-            todo!()
+        fn xdot(&self, _t: f64, 
+            _x: nalgebra::SVector<f64, 0>, 
+            _u: nalgebra::SVector<f64, 1>) -> nalgebra::SVector<f64, 0> {
+            [].into()
         }
 
-        fn y(&self, t: f64, 
-            x: nalgebra::SVector<f64, 0>, 
+        fn y(&self, _t: f64, 
+            _x: nalgebra::SVector<f64, 0>, 
             u: nalgebra::SVector<f64, 1>) -> nalgebra::SVector<f64, 1> {
             self.a * u
         }
@@ -134,11 +134,11 @@ mod tests {
     }
 
     impl DynamicalSystem<1, 1, 1> for Exp {
-        fn xdot(&self, t: f64, x: SVector<f64, 1>, u: SVector<f64, 1>) -> SVector<f64, 1> {
+        fn xdot(&self, _t: f64, x: SVector<f64, 1>, u: SVector<f64, 1>) -> SVector<f64, 1> {
             self.alpha * (u - x)
         }
 
-        fn y(&self, t: f64, x: SVector<f64, 1>, u: SVector<f64, 1>) -> SVector<f64, 1> {
+        fn y(&self, _t: f64, x: SVector<f64, 1>, _u: SVector<f64, 1>) -> SVector<f64, 1> {
             x
         }
     }

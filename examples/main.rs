@@ -1,4 +1,4 @@
-use control_systems::{DynamicalSystem, Series, NegativeFeedback, SVector};
+use control_systems::{DynamicalSystem, SVector};
 
 struct SecondOrder {
     k: f64,
@@ -6,7 +6,7 @@ struct SecondOrder {
 }
 
 impl DynamicalSystem<2, 1, 1> for SecondOrder {
-    fn xdot(&self, t: f64, 
+    fn xdot(&self, _t: f64, 
         x: SVector<f64, 2>, 
         u: SVector<f64, 1>) -> SVector<f64, 2> {
         [
@@ -15,9 +15,9 @@ impl DynamicalSystem<2, 1, 1> for SecondOrder {
         ].into()
     }
 
-    fn y(&self, t: f64, 
+    fn y(&self, _t: f64, 
         x: SVector<f64, 2>, 
-        u: SVector<f64, 1>) -> SVector<f64, 1> {
+        _u: SVector<f64, 1>) -> SVector<f64, 1> {
         SVector::<f64, 1>::new(x.x)
     }
 }

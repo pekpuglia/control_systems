@@ -59,11 +59,11 @@ mod tests {
     }
 
     impl DynamicalSystem<1, 1, 1> for Exp {
-        fn xdot(&self, t: f64, x: SVector<f64, 1>, u: SVector<f64, 1>) -> SVector<f64, 1> {
+        fn xdot(&self, _t: f64, x: SVector<f64, 1>, u: SVector<f64, 1>) -> SVector<f64, 1> {
             self.alpha * (u - x)
         }
 
-        fn y(&self, t: f64, x: SVector<f64, 1>, u: SVector<f64, 1>) -> SVector<f64, 1> {
+        fn y(&self, _t: f64, x: SVector<f64, 1>, _u: SVector<f64, 1>) -> SVector<f64, 1> {
             x
         }
     }
@@ -74,7 +74,7 @@ mod tests {
     }
 
     impl DynamicalSystem<2, 1, 1> for SecondOrder {
-        fn xdot(&self, t: f64, 
+        fn xdot(&self, _t: f64, 
             x: SVector<f64, 2>, 
             u: SVector<f64, 1>) -> SVector<f64, 2> {
             [
@@ -83,9 +83,9 @@ mod tests {
             ].into()
         }
 
-        fn y(&self, t: f64, 
+        fn y(&self, _t: f64, 
             x: SVector<f64, 2>, 
-            u: SVector<f64, 1>) -> SVector<f64, 1> {
+            _u: SVector<f64, 1>) -> SVector<f64, 1> {
             SVector::<f64, 1>::new(x.x)
         }
     }
