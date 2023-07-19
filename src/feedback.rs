@@ -35,7 +35,30 @@ where
     RDS: DynamicalSystem<RSVS, OS, IS>    
 {
     fn xdot(&self, t: f64, x: SVector<f64, {DSVS+RSVS}>, u: SVector<f64, IS>) -> SVector<f64, {DSVS+RSVS}> {
-        todo!()
+        let output = self.y(t, x, u);
+
+        let dirxdot = self.dirsys.xdot(
+            t, 
+            SVector::from_row_slice(x.fixed_rows::<DSVS>(0).data.into_slice()), 
+            u - self.revsys.y(
+                t, 
+                SVector::from_row_slice(x.fixed_rows::<RSVS>(DSVS).data.into_slice()), 
+                output
+            )
+        );
+
+        let revxdot = self.revsys.xdot(
+            t, 
+            SVector::from_row_slice(x.fixed_rows::<RSVS>(DSVS).data.into_slice()), 
+            output
+        );
+
+        SVector::from_iterator(
+            dirxdot
+            .into_iter()
+            .chain(revxdot.into_iter())
+            .copied()
+        )
     }
 
     fn y(&self, t: f64, x: SVector<f64, {DSVS + RSVS}>, u: SVector<f64, IS>) -> SVector<f64, OS> {
@@ -74,6 +97,20 @@ mod tests {
         }
     }
 
+    struct Exp {
+        alpha: f64
+    }
+
+    impl DynamicalSystem<1, 1, 1> for Exp {
+        fn xdot(&self, t: f64, x: SVector<f64, 1>, u: SVector<f64, 1>) -> SVector<f64, 1> {
+            self.alpha * (u - x)
+        }
+
+        fn y(&self, t: f64, x: SVector<f64, 1>, u: SVector<f64, 1>) -> SVector<f64, 1> {
+            x
+        }
+    }
+
     #[test]
     fn test_feedback_output() {
         let sys = LinearFunc{a: 2.0};
@@ -83,5 +120,18 @@ mod tests {
         let output = feedback_sys.y(0.0, [].into(), [1.0].into());
 
         assert!((output.x - 0.4).abs() < 1e-15);
+    }
+
+    #[test]
+    fn test_feedback_xdot() {
+        let exp1 = Exp{ alpha: 0.0 };
+        let exp2 = Exp{ alpha: 1.0 };
+
+        let feedback_sys: NegativeFeedback<Exp, Exp, 1, 1, 1, 1> = NegativeFeedback { 
+            dirsys: exp1, revsys: exp2 };
+
+        let xdot = feedback_sys.xdot(0.0, [1.0, 2.0].into(), [3.0].into());
+
+        assert!(xdot == SVector::<f64, 2>::from_row_slice(&[0.0, -1.0]));
     }
 }
