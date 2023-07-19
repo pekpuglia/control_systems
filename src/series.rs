@@ -1,5 +1,5 @@
 use crate::*;
-struct Series<DS1, DS2, const SVS1: usize, const SVS2: usize, const OS1IS2: usize> {
+pub struct Series<DS1, DS2, const SVS1: usize, const SVS2: usize, const OS1IS2: usize> {
     dynsys1: DS1,
     dynsys2: DS2
 }
