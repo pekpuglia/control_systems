@@ -1,7 +1,8 @@
 #![feature(generic_const_exprs)]
 pub use nalgebra::SVector;
 
-//constructors
+//fix warnings
+//system lib?
 
 //problema: pode ter mais de 1 implementação por tipo p parâmetros genéricos diferentes
 pub trait DynamicalSystem<
