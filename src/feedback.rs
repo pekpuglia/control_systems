@@ -3,7 +3,11 @@ use crate::*;
 use eqsolver::multivariable::MultiVarNewtonFD;
 
 //direct dynamical system, reverse dynamical system
-pub struct NegativeFeedback<DDS, RDS, const DSVS: usize, const RSVS: usize, const IS: usize, const OS: usize> {
+pub struct NegativeFeedback<DDS, RDS, const DSVS: usize, const RSVS: usize, const IS: usize, const OS: usize> 
+where
+    DDS: DynamicalSystem<DSVS, IS, OS>,
+    RDS: DynamicalSystem<RSVS, OS, IS> 
+{
     dirsys: DDS,
     revsys: RDS
 }
@@ -114,7 +118,7 @@ mod tests {
     #[test]
     fn test_feedback_output() {
         let sys = LinearFunc{a: 2.0};
-        let feedback_sys: NegativeFeedback<LinearFunc, LinearFunc, 0, 0, 1, 1> = NegativeFeedback{ 
+        let feedback_sys = NegativeFeedback{ 
             dirsys: sys, revsys: sys };
 
         let output = feedback_sys.y(0.0, [].into(), [1.0].into());
@@ -127,7 +131,7 @@ mod tests {
         let exp1 = Exp{ alpha: 0.0 };
         let exp2 = Exp{ alpha: 1.0 };
 
-        let feedback_sys: NegativeFeedback<Exp, Exp, 1, 1, 1, 1> = NegativeFeedback { 
+        let feedback_sys = NegativeFeedback { 
             dirsys: exp1, revsys: exp2 };
 
         let xdot = feedback_sys.xdot(0.0, [1.0, 2.0].into(), [3.0].into());
