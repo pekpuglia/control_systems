@@ -1,9 +1,10 @@
 pub use nalgebra::{DVector, dvector};
 
-//fix warnings
+//todo
+//remove cloning?
+//make it size-safe!
 //system lib?
 
-//problema: pode ter mais de 1 implementação por tipo p parâmetros genéricos diferentes
 pub trait DynamicalSystem {
 
     const STATE_VECTOR_SIZE: usize;
