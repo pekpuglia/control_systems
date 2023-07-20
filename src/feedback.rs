@@ -61,10 +61,12 @@ where
             panic!("Wrong sizes!")
         }
     }
-    pub fn new_unity_feedback<SquareDS, const SIZE: usize>(dirsys: SquareDS) -> NegativeFeedback<SquareDS, UnitySystem<SIZE>>
-    where
-        SquareDS: DynamicalSystem,
+}
 
+pub type UnityFeedback<DDS: DynamicalSystem, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
+
+impl<DDS: DynamicalSystem, const SIZE: usize> NegativeFeedback<DDS, UnitySystem<SIZE>> {
+    pub fn new_unity_feedback(dirsys: DDS) -> NegativeFeedback<DDS, UnitySystem<SIZE>>
     {
         NegativeFeedback::new(dirsys, UnitySystem{})
     }

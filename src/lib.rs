@@ -1,4 +1,4 @@
-pub use nalgebra::DVector;
+pub use nalgebra::{DVector, dvector};
 
 //fix warnings
 //system lib?
@@ -23,4 +23,4 @@ pub use series::Series;
 
 
 mod feedback;
-pub use feedback::{NegativeFeedback, UnitySystem};
+pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
