@@ -1,4 +1,3 @@
-use nalgebra::SimdValue;
 
 use crate::*;
 pub struct Series<DS1, DS2>

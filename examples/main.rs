@@ -1,4 +1,4 @@
-use control_systems::{DynamicalSystem, NegativeFeedback, UnitySystem, DVector, dvector, UnityFeedback};
+use control_systems::{DynamicalSystem, DVector, dvector, UnityFeedback};
 
 #[derive(Clone, Copy)]
 struct SecondOrder {

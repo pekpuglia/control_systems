@@ -63,7 +63,7 @@ where
     }
 }
 
-pub type UnityFeedback<DDS: DynamicalSystem, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
+pub type UnityFeedback<DDS, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
 
 impl<DDS: DynamicalSystem, const SIZE: usize> NegativeFeedback<DDS, UnitySystem<SIZE>> {
     pub fn new_unity_feedback(dirsys: DDS) -> NegativeFeedback<DDS, UnitySystem<SIZE>>
