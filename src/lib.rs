@@ -22,5 +22,5 @@ mod series;
 pub use series::Series;
 
 
-// mod feedback;
-// pub use feedback::{NegativeFeedback, UnitySystem};
+mod feedback;
+pub use feedback::{NegativeFeedback, UnitySystem};
