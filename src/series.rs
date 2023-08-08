@@ -1,5 +1,6 @@
 
 use crate::*;
+#[derive(Clone, Copy, Debug)]
 pub struct Series<DS1, DS2>
 {
     dynsys1: DS1,

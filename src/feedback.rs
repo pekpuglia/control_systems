@@ -5,6 +5,7 @@ use crate::*;
 use eqsolver::multivariable::MultiVarNewtonFD;
 use nalgebra::dvector;
 
+#[derive(Clone, Copy, Debug)]
 pub struct UnitySystem<const SIZE: usize>;
 
 impl<const SIZE: usize> DynamicalSystem for UnitySystem<SIZE> {
@@ -27,6 +28,7 @@ impl<const SIZE: usize> DynamicalSystem for UnitySystem<SIZE> {
     const OUTPUT_SIZE     : usize = SIZE;
 }
 
+#[derive(Debug, Clone, Copy)]
 //direct dynamical system, reverse dynamical system
 pub struct NegativeFeedback<DDS, RDS> 
 {
