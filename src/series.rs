@@ -8,11 +8,11 @@ pub struct Series<DS1, DS2>
 }
 
 impl<DS1, DS2> Series<DS1, DS2>  {
-    fn ds1_ref(&self) -> &DS1 {
+    pub fn ds1_ref(&self) -> &DS1 {
         &self.dynsys1
     }
 
-    fn ds2_ref(&self) -> &DS2 {
+    pub fn ds2_ref(&self) -> &DS2 {
         &self.dynsys2
     }
 }

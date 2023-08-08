@@ -64,11 +64,11 @@ where
         }
     }
 
-    fn dir_ref(&self) -> &DDS {
+    pub fn dir_ref(&self) -> &DDS {
         &self.dirsys
     }
 
-    fn rev_ref(&self) -> &RDS {
+    pub fn rev_ref(&self) -> &RDS {
         &self.revsys
     }
 }
