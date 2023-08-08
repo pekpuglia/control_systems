@@ -8,6 +8,9 @@ pub struct Series<DS1, DS2>
 }
 
 impl<DS1, DS2> Series<DS1, DS2>  {
+    pub fn new(ds1: DS1, ds2: DS2) -> Self {
+        Series { dynsys1: ds1, dynsys2: ds2 }
+    }
     pub fn ds1_ref(&self) -> &DS1 {
         &self.dynsys1
     }
