@@ -7,11 +7,15 @@ pub struct Series<DS1, DS2>
     dynsys2: DS2
 }
 
-// impl<DS1, DS2, const SVS1: usize, const SVS2: usize, const OS1IS2: usize> Series<DS1, DS2, SVS1, SVS2, OS1IS2> {
-//     pub fn new(dynsys1: DS1, dynsys2: DS2) -> Series<DS1, DS2, SVS1, SVS2, OS1IS2> {
-//         Series { dynsys1, dynsys2 }
-//     }
-// }
+impl<DS1, DS2> Series<DS1, DS2>  {
+    fn ds1_ref(&self) -> &DS1 {
+        &self.dynsys1
+    }
+
+    fn ds2_ref(&self) -> &DS2 {
+        &self.dynsys2
+    }
+}
 
 impl<DS1, DS2> DynamicalSystem for Series<DS1, DS2> 
 where

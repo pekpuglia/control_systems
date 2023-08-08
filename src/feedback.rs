@@ -63,6 +63,14 @@ where
             panic!("Wrong sizes!")
         }
     }
+
+    fn dir_ref(&self) -> &DDS {
+        &self.dirsys
+    }
+
+    fn rev_ref(&self) -> &RDS {
+        &self.revsys
+    }
 }
 
 pub type UnityFeedback<DDS, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
