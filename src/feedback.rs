@@ -97,12 +97,14 @@ where
     fn xdot(&self, t: f64, 
         x: DVector<f64>, 
         u: DVector<f64>) -> DVector<f64> {
+        
         let output = self.y(t, x.clone(), u.clone());
+        let rev_output = self.revsys.y(t, x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), output.clone());
 
         let mut dirxdot = self.dirsys.xdot(
             t, 
             x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
-            u
+            u - rev_output
         );
 
         let revxdot = self.revsys.xdot(
@@ -194,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_feedback_xdot() {
-        let exp1 = Exp{ alpha: 0.0 };
+        let exp1 = Exp{ alpha: 1.0 };
         let exp2 = Exp{ alpha: 1.0 };
 
         let feedback_sys = NegativeFeedback { 
