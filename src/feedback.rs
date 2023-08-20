@@ -1,68 +1,83 @@
 use core::panic;
+use std::marker::PhantomData;
 
 use crate::*;
 
 use eqsolver::multivariable::MultiVarNewtonFD;
 use nalgebra::dvector;
 
-#[derive(Clone, Copy, Debug)]
-pub struct UnitySystem<const SIZE: usize>;
+// #[derive(Clone, Copy, Debug)]
+// pub struct UnitySystem<const SIZE: usize>;
 
-impl<const SIZE: usize> DynamicalSystem for UnitySystem<SIZE> {
-    fn xdot(&self, _t: f64, 
-        _x: DVector<f64>, 
-        _u: DVector<f64>) -> DVector<f64> {
-        dvector![]
-    }
+// impl<const SIZE: usize> DynamicalSystem for UnitySystem<SIZE> {
+//     fn xdot(&self, _t: f64, 
+//         _x: DVector<f64>, 
+//         _u: DVector<f64>) -> DVector<f64> {
+//         dvector![]
+//     }
 
-    fn y(&self, _t: f64, 
-        _x: DVector<f64>, 
-        u: DVector<f64>) -> DVector<f64> {
-        u
-    }
+//     fn y(&self, _t: f64, 
+//         _x: DVector<f64>, 
+//         u: DVector<f64>) -> DVector<f64> {
+//         u
+//     }
 
-    const STATE_VECTOR_SIZE: usize = 0;
+//     const STATE_VECTOR_SIZE: usize = 0;
 
-    const INPUT_SIZE      : usize = SIZE;
+//     const INPUT_SIZE      : usize = SIZE;
 
-    const OUTPUT_SIZE     : usize = SIZE;
+//     const OUTPUT_SIZE     : usize = SIZE;
+// }
+
+trait AsMap<T: EnumArray<f64>> {
+    fn as_map(&self) -> EnumMap<T, f64>;
+}
+
+trait AsVector {
+    fn as_vector(&self) -> DVector<f64>;
 }
 
 #[derive(Debug, Clone, Copy)]
 //direct dynamical system, reverse dynamical system
-pub struct NegativeFeedback<DDS, RDS> 
+pub struct NegativeFeedback<DDS, RDS, StateVectorEnum> 
 {
     dirsys: DDS,
-    revsys: RDS
+    revsys: RDS,
+    _phantom: PhantomData<StateVectorEnum>
 }
 
-impl<DDS, RDS> 
-    NegativeFeedback<DDS, RDS>
+impl<DDS, RDS, StateVectorEnum> 
+    NegativeFeedback<DDS, RDS, StateVectorEnum>
 where
     DDS: DynamicalSystem,
-    RDS: DynamicalSystem 
+    RDS: DynamicalSystem,
+    StateVectorEnum: EnumArray<f64>,
+    DVector<f64>: AsMap<StateVectorEnum> + AsMap<RDS::Input> + AsMap<DDS::Input>,
+    EnumMap<DDS::Output, f64>: AsVector,
+    EnumMap<RDS::Output, f64>: AsVector,
+    EnumMap<StateVectorEnum, f64>: SubMapOps<First = DDS::StateVector, Second = RDS::StateVector>
 {
     fn residue(&self, t: f64, y: DVector<f64>, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
         y.clone() - self.dirsys.y(
             t, 
-            x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
-            u - self.revsys.y(
+            x.as_map().first(), 
+            (u - self.revsys.y(
                 t, 
-                x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), 
-                y)
-            )
+                x.as_map().second(), 
+                y.as_map()).as_vector()).as_map()
+            ).as_vector()
     }
 
-    pub fn new(dirsys: DDS, revsys: RDS) -> NegativeFeedback<DDS, RDS> {
-        NegativeFeedback::<DDS, RDS>::assert_sizes();
-        NegativeFeedback { dirsys, revsys }
+    pub fn new(dirsys: DDS, revsys: RDS) -> NegativeFeedback<DDS, RDS, StateVectorEnum> {
+        // NegativeFeedback::<DDS, RDS>::assert_sizes();
+        NegativeFeedback { dirsys, revsys, _phantom: PhantomData }
     }
 
-    const fn assert_sizes() {
-        if DDS::OUTPUT_SIZE != RDS::INPUT_SIZE || DDS::INPUT_SIZE != RDS::OUTPUT_SIZE {
-            panic!("Wrong sizes!")
-        }
-    }
+    // const fn assert_sizes() {
+    //     if DDS::OUTPUT_SIZE != RDS::INPUT_SIZE || DDS::INPUT_SIZE != RDS::OUTPUT_SIZE {
+    //         panic!("Wrong sizes!")
+    //     }
+    // }
 
     pub fn dir_ref(&self) -> &DDS {
         &self.dirsys
@@ -73,64 +88,82 @@ where
     }
 }
 
-pub type UnityFeedback<DDS, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
+// pub type UnityFeedback<DDS, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
 
-impl<DDS: DynamicalSystem, const SIZE: usize> NegativeFeedback<DDS, UnitySystem<SIZE>> {
-    pub fn new_unity_feedback(dirsys: DDS) -> NegativeFeedback<DDS, UnitySystem<SIZE>>
-    {
-        NegativeFeedback::new(dirsys, UnitySystem{})
-    }
-}
+// impl<DDS: DynamicalSystem, const SIZE: usize> NegativeFeedback<DDS, UnitySystem<SIZE>> {
+//     pub fn new_unity_feedback(dirsys: DDS) -> NegativeFeedback<DDS, UnitySystem<SIZE>>
+//     {
+//         NegativeFeedback::new(dirsys, UnitySystem{})
+//     }
+// }
 
-impl<DDS, RDS> DynamicalSystem for NegativeFeedback<DDS, RDS> 
+impl<DDS, RDS, StateVectorEnum: EnumArray<f64>> DynamicalSystem for 
+    NegativeFeedback<DDS, RDS, StateVectorEnum> 
 where
     DDS: DynamicalSystem,
     RDS: DynamicalSystem,
-    
+    EnumMap<DDS::Output, f64>: ConvertMap<RDS::Input>,
+    EnumMap<RDS::Output, f64>: ConvertMap<DDS::Input>,
+    EnumMap<StateVectorEnum, f64>: Copy,
+    EnumMap<StateVectorEnum, f64>: SubMapOps<First = DDS::StateVector, Second = RDS::StateVector>,
 {
-    const STATE_VECTOR_SIZE: usize = DDS::STATE_VECTOR_SIZE + RDS::STATE_VECTOR_SIZE;
+    type Input = DDS::Input;
 
-    const INPUT_SIZE      : usize = DDS::INPUT_SIZE;
+    type StateVector = StateVectorEnum;
 
-    const OUTPUT_SIZE     : usize = DDS::OUTPUT_SIZE;
+    type Output = DDS::Output;
 
     fn xdot(&self, t: f64, 
-        x: DVector<f64>, 
-        u: DVector<f64>) -> DVector<f64> {
-        
-        let output = self.y(t, x.clone(), u.clone());
-        let rev_output = self.revsys.y(t, x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), output.clone());
-
-        let mut dirxdot = self.dirsys.xdot(
-            t, 
-            x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
-            u - rev_output
-        );
-
-        let revxdot = self.revsys.xdot(
-            t, 
-            x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), 
-            output
-        );
-
-        dirxdot
-            .extend(revxdot.iter().copied());
-        dirxdot
+        x: EnumMap<Self::StateVector, f64>, 
+        u: EnumMap<Self::Input, f64>) -> EnumMap<Self::StateVector, f64> {
+        todo!()
     }
 
     fn y(&self, t: f64, 
-        x: DVector<f64>, 
-        u: DVector<f64>) -> DVector<f64> {
-        MultiVarNewtonFD::new(
-            |output| self.residue(t, output, x.clone(), u.clone())
-        )
-        .solve(self.dirsys.y(
-            t, 
-            x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
-            u.clone())
-        )
-        .unwrap()
+        x: EnumMap<Self::StateVector, f64>, 
+        u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> {
+        todo!()
     }
+
+        // fn y(&self, t: f64, 
+    //     x: DVector<f64>, 
+    //     u: DVector<f64>) -> DVector<f64> {
+    //     MultiVarNewtonFD::new(
+    //         |output| self.residue(t, output, x.clone(), u.clone())
+    //     )
+    //     .solve(self.dirsys.y(
+    //         t, 
+    //         x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
+    //         u.clone())
+    //     )
+    //     .unwrap()
+    // }
+
+    // fn xdot(&self, t: f64, 
+    //     x: DVector<f64>, 
+    //     u: DVector<f64>) -> DVector<f64> {
+        
+    //     let output = self.y(t, x.clone(), u.clone());
+    //     let rev_output = self.revsys.y(t, x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), output.clone());
+
+    //     let mut dirxdot = self.dirsys.xdot(
+    //         t, 
+    //         x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
+    //         u - rev_output
+    //     );
+
+    //     let revxdot = self.revsys.xdot(
+    //         t, 
+    //         x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), 
+    //         output
+    //     );
+
+    //     dirxdot
+    //         .extend(revxdot.iter().copied());
+    //     dirxdot
+    // }
+
+
 }
 
 #[cfg(test)]

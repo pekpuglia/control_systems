@@ -6,6 +6,7 @@ pub use enum_map::{EnumArray, Enum};
 //todo
 //remove cloning?
 //make it size-safe!
+//default impl for merge in ConvertMap?
 //system lib?
 
 pub trait DynamicalSystem {
@@ -90,9 +91,22 @@ mod test {
     }
 }
 
+trait SubMapOps {
+    type First: EnumArray<f64>;
+    type Second: EnumArray<f64>;
+    fn first(&self) -> EnumMap<Self::First, f64>;
+    fn second(&self) -> EnumMap<Self::Second, f64>;
+    fn merge(map1: EnumMap<Self::First, f64>, map2: EnumMap<Self::Second, f64>) -> Self;
+}
+
+trait ConvertMap<DestType: EnumArray<f64>> {
+    fn convert(&self) -> EnumMap<DestType, f64>;
+}
+
+
 mod series;
 pub use series::Series;
 
 
-// mod feedback;
+mod feedback;
 // pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};

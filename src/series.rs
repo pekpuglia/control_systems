@@ -37,19 +37,6 @@ macro_rules! StateVectorTypes {
     };
 }
 
-trait SubMapOps {
-    type First: EnumArray<f64>;
-    type Second: EnumArray<f64>;
-    fn first(&self) -> EnumMap<Self::First, f64>;
-    fn second(&self) -> EnumMap<Self::Second, f64>;
-    fn merge(map1: EnumMap<Self::First, f64>, map2: EnumMap<Self::Second, f64>) -> Self;
-}
-
-trait ConvertMap<DestType: EnumArray<f64>> {
-    fn convert(&self) -> EnumMap<DestType, f64>;
-}
-
-
 impl<DS1, DS2, StateVectorEnum: EnumArray<f64>> DynamicalSystem for Series<DS1, DS2, StateVectorEnum> 
 where
     DS1: DynamicalSystem,
