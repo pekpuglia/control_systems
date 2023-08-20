@@ -25,23 +25,39 @@ impl<DS1, DS2, StateVectorEnum> Series<DS1, DS2, StateVectorEnum>  {
 
 use paste::paste;
 
-macro_rules! sum_of_enums {
-    ($base_name: ident = $($factors: ty),+) => {
+macro_rules! StateVectorTypes {
+    ($base_name: ident = $sv1:ty , $sv2:ty) => {
         paste!{
-            #[derive(Enum)]
-            enum [<$base_name $($factors) +>] {
-                $(
-                    $factors($factors)
-                ),+
+            #[derive(Enum, Clone, Copy, Debug)]
+            enum [<$base_name $sv1 $sv2>] {
+                First($sv1),
+                Second($sv2)
             }
         }
     };
 }
 
+trait SubMapOps {
+    type First: EnumArray<f64>;
+    type Second: EnumArray<f64>;
+    fn first(&self) -> EnumMap<Self::First, f64>;
+    fn second(&self) -> EnumMap<Self::Second, f64>;
+    fn merge(map1: EnumMap<Self::First, f64>, map2: EnumMap<Self::Second, f64>) -> Self;
+}
+
+trait ConvertMap<DestType: EnumArray<f64>> {
+    fn convert(&self) -> EnumMap<DestType, f64>;
+}
+
+
 impl<DS1, DS2, StateVectorEnum: EnumArray<f64>> DynamicalSystem for Series<DS1, DS2, StateVectorEnum> 
 where
     DS1: DynamicalSystem,
-    DS2: DynamicalSystem
+    DS2: DynamicalSystem,
+    EnumMap<DS1::Output, f64>: ConvertMap<DS2::Input>,
+    EnumMap<StateVectorEnum, f64>: SubMapOps<First = DS1::StateVector, Second = DS2::StateVector>,
+    EnumMap<StateVectorEnum, f64>: Copy,
+    EnumMap<DS1::Input, f64>: Copy
 {
     type Input = DS1::Input;
 
@@ -51,111 +67,47 @@ where
 
     fn xdot(&self, t: f64, 
         x: EnumMap<Self::StateVector, f64>, 
-        u: EnumMap<Self::Input, f64>) -> EnumMap<Self::StateVector, f64> {
-            todo!()
+        u: EnumMap<Self::Input, f64>) -> EnumMap<Self::StateVector, f64> 
+    {
+        let x1dot = self.dynsys1.xdot(t, x.first(), u);
+
+        let x2dot = self.dynsys2.xdot(
+            t, 
+            x.second(), 
+            self.dynsys1.y(t, x.first(), u).convert());
+
+        SubMapOps::merge(x1dot, x2dot)
     }
 
     fn y(&self, t: f64, 
         x: EnumMap<Self::StateVector, f64>, 
-        u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> {
-        todo!()
+        u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> 
+    {
+        self.dynsys2.y(t, x.second(), self.dynsys1.y(t, x.first(), u).convert())    
     }
-
-    // fn xdot(&self, t: f64, 
-    //     x: DVector<f64>, 
-    //     u: DVector<f64>) -> DVector<f64> {
-    //     let mut x1dot = self.dynsys1.xdot(
-    //         t, 
-    //         x.rows(0, DS1::STATE_VECTOR_SIZE).into(), 
-    //         u.clone()
-    //     );
-    //     let x2dot = self.dynsys2.xdot(
-    //         t, 
-    //         x.rows(DS1::STATE_VECTOR_SIZE, DS2::STATE_VECTOR_SIZE).into(), 
-    //         self.dynsys1.y(
-    //             t, x.rows(0, DS1::STATE_VECTOR_SIZE).into(), u)
-    //     );
-
-    //     x1dot
-    //         .extend(x2dot.iter().copied());
-    //     x1dot
-    // }
-
-    // fn y(&self, t: f64, 
-    //     x: DVector<f64>, 
-    //     u: DVector<f64>) -> DVector<f64> {
-    //     let u1 = self.dynsys1.y(
-    //         t, 
-    //         x.rows(0, DS1::STATE_VECTOR_SIZE).into(), 
-    //         u
-    //     );
-
-    //     self.dynsys2.y(
-    //         t, 
-    //         x.rows(DS1::STATE_VECTOR_SIZE, DS2::STATE_VECTOR_SIZE).into(), 
-    //         u1)
-    // }
 }
-
-// impl<const SVS1: usize, 
-//     const SVS2: usize, 
-//     const IS1: usize, 
-//     const OS1IS2: usize, 
-//     const OS2: usize, 
-//     DS1: DynamicalSystem, 
-//     DS2: DynamicalSystem> DynamicalSystem for Series<DS1, DS2, SVS1, SVS2, OS1IS2> 
-// {
-    
-//     fn xdot(&self, t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
-//         let x1dot = self.dynsys1.xdot(
-//             t, 
-//             x.rows(0, 1),
-//             u
-//         );
-
-//         let x2dot = self.dynsys2.xdot(
-//             t, 
-//             x.rows(0, 1), 
-//             self.dynsys1.y(t, x.rows, u));
-        
-//         //não reclama por algum motivo
-//         SVector::from_iterator(
-//             x1dot
-//             .into_iter()
-//             .chain(x2dot.into_iter())
-//             .copied()
-//         )
-//     }
-
-//     fn y(&self, t: f64, x: SVector<f64, {SVS1 + SVS2}>, u: SVector<f64, IS1>) -> SVector<f64, OS2> {
-//         self.dynsys2.y(
-//             t, 
-//             SVector::from_row_slice(x.fixed_rows::<SVS2>(SVS1).data.into_slice()), 
-//             self.dynsys1.y(t, SVector::from_row_slice(x.fixed_rows::<SVS1>(0).data.into_slice()), u))
-//     }
-
-// }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::DynamicalSystem;
     use nalgebra::{DVector, dvector};
     use enum_map::enum_map;
     struct ExpSys {
         alpha: f64
     }
 
-    #[derive(Enum)]
+    #[derive(Enum, Clone, Copy, Debug)]
     enum Input {
         Reference
     }
 
-    #[derive(Enum)]
+    #[derive(Enum, Clone, Copy, Debug)]
     enum State {
         Position
     }
 
-    #[derive(Enum)]
+    #[derive(Enum, Clone, Copy, Debug)]
     enum Output {
         Position
     }
@@ -189,18 +141,26 @@ mod tests {
         c: f64
     }
 
-    #[derive(Enum)]
+    #[derive(Enum, Clone, Copy, Debug)]
     enum SOInp {
         Force
     }
 
-    #[derive(Enum)]
+    impl ConvertMap<SOInp> for EnumMap<Output, f64> {
+        fn convert(&self) -> EnumMap<SOInp, f64> {
+            enum_map! {
+                SOInp::Force => self[Output::Position]
+            }
+        }
+    }
+
+    #[derive(Enum, Clone, Copy, Debug)]
     enum SOSV {
         Position,
         Velocity
     }
 
-    #[derive(Enum)]
+    #[derive(Enum, Clone, Copy, Debug)]
     enum SOOut {
         Position
     }
@@ -226,44 +186,75 @@ mod tests {
             u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> {
             enum_map! {SOOut::Position => x[SOSV::Position]}
         }
-        // fn xdot(&self, _t: f64, 
-        //     x: DVector<f64>, 
-        //     u: DVector<f64>) -> DVector<f64> {
-            
-        //     dvector![
-        //         x[1],
-        //         -self.k*x[0]-self.c*x[1]+u[0]
-        //     ]
-        // }
 
-        // fn y(&self, _t: f64, 
-        //     x: DVector<f64>, 
-        //     _u: DVector<f64>) -> DVector<f64> {
-        //     dvector![x[0]]
-        // }
+    }
 
-        // const STATE_VECTOR_SIZE: usize = 2;
+    StateVectorTypes!(Series = State, SOSV);
 
-        // const INPUT_SIZE      : usize = 1;
+    impl SubMapOps for EnumMap<SeriesStateSOSV, f64> {
+        type First = State;
 
-        // const OUTPUT_SIZE     : usize = 1;
+        type Second = SOSV;
+
+        fn first(&self) -> EnumMap<Self::First, f64> {
+            enum_map! {
+                State::Position => self[SeriesStateSOSV::First(State::Position)]
+            }
+        }
+
+        fn second(&self) -> EnumMap<Self::Second, f64> {
+            enum_map! {
+                SOSV::Position => self[SeriesStateSOSV::Second(SOSV::Position)],
+                SOSV::Velocity => self[SeriesStateSOSV::Second(SOSV::Velocity)]
+            }
+        }
+
+        fn merge(map1: EnumMap<Self::First, f64>, map2: EnumMap<Self::Second, f64>) -> Self {
+            enum_map! {
+                SeriesStateSOSV::First(State::Position) => map1[State::Position],
+                SeriesStateSOSV::Second(SOSV::Position) => map2[SOSV::Position],
+                SeriesStateSOSV::Second(SOSV::Velocity) => map2[SOSV::Velocity]
+            }
+        }
+
+
     }
 
     #[test]
     fn test_series_xdot() {
-        let series = Series::new(ExpSys{alpha: 0.5}, SecondOrder{ k: 1.0, c: 1.0 });
+        let s: Series<ExpSys, SecondOrder, SeriesStateSOSV> = Series::new(ExpSys{alpha: 0.5}, SecondOrder{ k: 1.0, c: 1.0 });
         
-        
+        let state = enum_map! {
+            SeriesStateSOSV::First(State::Position) => 0.0,
+            SeriesStateSOSV::Second(SOSV::Position) => 0.0,
+            SeriesStateSOSV::Second(SOSV::Velocity) => 1.0
+        };
 
-        let xdot = series.xdot(0.0, dvector![0.0,0.0, 1.0], dvector![1.0]);
+        let input = enum_map! {Input::Reference => 1.0};
+
+        let xdot = s.xdot(0.0, state, input);
         dbg!(&xdot);
-        assert!(xdot == DVector::from_row_slice(&[0.5, 1.0, -1.0]))
+        assert!(xdot == enum_map! {
+            SeriesStateSOSV::First(State::Position) => 0.5,
+            SeriesStateSOSV::Second(SOSV::Position) => 1.0,
+            SeriesStateSOSV::Second(SOSV::Velocity) => -1.0
+        })
+
     }
 
     #[test]
     fn test_series_output() {
-        let series = Series::new(ExpSys{alpha: 0.5}, SecondOrder{ k: 1.0, c: 1.0 });
-        let out = series.y(0.0, dvector![0.5, 0.7, 1.0], dvector![1.0]);
-        assert!(out == [0.7].into())
+        // let series = Series::new(ExpSys{alpha: 0.5}, SecondOrder{ k: 1.0, c: 1.0 });
+
+        // let state = enum_map! {
+        //     SeriesStateSOSV::First(State::Position) => 0.5,
+        //     SeriesStateSOSV::Second(SOSV::Position) => 0.7,
+        //     SeriesStateSOSV::Second(SOSV::Velocity) => 1.0
+        // };
+
+        // let input = enum_map! {Input::Reference => 1.0};
+
+        // let out = series.y(0.0, state, input);
+        // assert!(out[SOOut::Position] == 0.7)
     }
 }

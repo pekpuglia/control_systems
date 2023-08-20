@@ -4,5 +4,7 @@ version = "0.5.0"
 edition = "2021"
 
 [dependencies]
+enum-map = "2.6.1"
 eqsolver = "0.1.2"
 nalgebra = "=0.32.3"
+paste = "1.0.14"
