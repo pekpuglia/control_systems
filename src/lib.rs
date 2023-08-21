@@ -69,9 +69,6 @@ mod test {
                 Output::Error => u[Input::Reference] - x[State::Position]
             }
         }
-
-
-
     }
 
     #[test]
@@ -91,7 +88,7 @@ mod test {
     }
 }
 
-trait SubMapOps {
+pub trait SubMapOps {
     type First: EnumArray<f64>;
     type Second: EnumArray<f64>;
     fn first(&self) -> EnumMap<Self::First, f64>;
@@ -104,8 +101,8 @@ trait ConvertMap<DestType: EnumArray<f64>> {
 }
 
 
-mod series;
-pub use series::Series;
+// mod series;
+// pub use series::Series;
 
 
 mod feedback;

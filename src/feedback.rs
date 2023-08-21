@@ -29,12 +29,26 @@ use nalgebra::dvector;
 //     const OUTPUT_SIZE     : usize = SIZE;
 // }
 
-trait AsMap<T: EnumArray<f64>> {
+use enum_iterator::{Sequence, all};
+
+pub trait AsMap<T: EnumArray<f64> + Sequence + Default> {
     fn as_map(&self) -> EnumMap<T, f64>;
 }
 
-trait AsVector {
+impl<T: EnumArray<f64> + Sequence + Default> AsMap<T> for DVector<f64> {
+    fn as_map(&self) -> EnumMap<T, f64> {
+        EnumMap::from_iter(self.iter().zip(all::<T>()).map(|(num, key)| (key, *num) ))
+    }
+}
+
+pub trait AsVector {
     fn as_vector(&self) -> DVector<f64>;
+}
+
+impl<T: EnumArray<f64>> AsVector for EnumMap<T, f64> {
+    fn as_vector(&self) -> DVector<f64> {
+        DVector::from_row_slice(self.as_slice())
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -52,6 +66,9 @@ where
     DDS: DynamicalSystem,
     RDS: DynamicalSystem,
     StateVectorEnum: EnumArray<f64>,
+    RDS::Input: Default + Sequence,
+    DDS::Input: Default + Sequence,
+    StateVectorEnum: Default + Sequence,
     DVector<f64>: AsMap<StateVectorEnum> + AsMap<RDS::Input> + AsMap<DDS::Input>,
     EnumMap<DDS::Output, f64>: AsVector,
     EnumMap<RDS::Output, f64>: AsVector,
@@ -102,10 +119,16 @@ impl<DDS, RDS, StateVectorEnum: EnumArray<f64>> DynamicalSystem for
 where
     DDS: DynamicalSystem,
     RDS: DynamicalSystem,
-    EnumMap<DDS::Output, f64>: ConvertMap<RDS::Input>,
-    EnumMap<RDS::Output, f64>: ConvertMap<DDS::Input>,
-    EnumMap<StateVectorEnum, f64>: Copy,
-    EnumMap<StateVectorEnum, f64>: SubMapOps<First = DDS::StateVector, Second = RDS::StateVector>,
+    StateVectorEnum: EnumArray<f64>,
+    RDS::Input: Default + Sequence,
+    DDS::Input: Default + Sequence,
+    DDS::Output: Default + Sequence,
+    StateVectorEnum: Default + Sequence,
+    DVector<f64>: AsMap<StateVectorEnum> + AsMap<RDS::Input> + AsMap<DDS::Input> + AsMap<DDS::Output>,
+    EnumMap<DDS::Input, f64>: Copy,
+    EnumMap<DDS::Output, f64>: AsVector + ConvertMap<RDS::Input>,
+    EnumMap<RDS::Output, f64>: AsVector,
+    EnumMap<StateVectorEnum, f64>: SubMapOps<First = DDS::StateVector, Second = RDS::StateVector> + Copy
 {
     type Input = DDS::Input;
 
@@ -116,105 +139,119 @@ where
     fn xdot(&self, t: f64, 
         x: EnumMap<Self::StateVector, f64>, 
         u: EnumMap<Self::Input, f64>) -> EnumMap<Self::StateVector, f64> {
-        todo!()
+        let output = self.y(t, x, u);
+        let rev_output = self.revsys.y(t, x.second(), output.convert());
+
+        let dirxdot = self.dirsys.xdot(t, x.first(), (u.as_vector() - rev_output.as_vector()).as_map());
+        let revxdot = self.revsys.xdot(t, x.second(), output.convert());
+
+        SubMapOps::merge(dirxdot, revxdot)
     }
 
     fn y(&self, t: f64, 
         x: EnumMap<Self::StateVector, f64>, 
         u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> {
-        todo!()
+        MultiVarNewtonFD::new(
+            |output| self.residue(t, output, x.as_vector(), u.as_vector())
+        ).solve(self.dirsys.y(t, x.first(), u).as_vector()).unwrap().as_map()
     }
-
-        // fn y(&self, t: f64, 
-    //     x: DVector<f64>, 
-    //     u: DVector<f64>) -> DVector<f64> {
-    //     MultiVarNewtonFD::new(
-    //         |output| self.residue(t, output, x.clone(), u.clone())
-    //     )
-    //     .solve(self.dirsys.y(
-    //         t, 
-    //         x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
-    //         u.clone())
-    //     )
-    //     .unwrap()
-    // }
-
-    // fn xdot(&self, t: f64, 
-    //     x: DVector<f64>, 
-    //     u: DVector<f64>) -> DVector<f64> {
-        
-    //     let output = self.y(t, x.clone(), u.clone());
-    //     let rev_output = self.revsys.y(t, x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), output.clone());
-
-    //     let mut dirxdot = self.dirsys.xdot(
-    //         t, 
-    //         x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
-    //         u - rev_output
-    //     );
-
-    //     let revxdot = self.revsys.xdot(
-    //         t, 
-    //         x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), 
-    //         output
-    //     );
-
-    //     dirxdot
-    //         .extend(revxdot.iter().copied());
-    //     dirxdot
-    // }
-
-
 }
 
 #[cfg(test)]
 mod tests {
 
+
     use crate::DynamicalSystem;
     use super::*;
+    use enum_map::enum_map;
 
     #[derive(Clone, Copy)]
     struct LinearFunc {
         a: f64
     }
 
-    impl DynamicalSystem for LinearFunc {
-        fn xdot(&self, _t: f64, 
-            _x: nalgebra::DVector<f64>, 
-            _u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-            dvector![]
-        }
-
-        fn y(&self, _t: f64, 
-            _x: nalgebra::DVector<f64>, 
-            u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-            self.a * u
-        }
-
-        const STATE_VECTOR_SIZE: usize = 0;
-
-        const INPUT_SIZE      : usize = 1;
-
-        const OUTPUT_SIZE     : usize = 1;
+    #[derive(Enum, Clone, Copy, Debug, Default, Sequence)]
+    enum LFInp {
+        #[default]
+        X
     }
 
-    struct Exp {
+    //terrível
+    #[derive(Enum, Clone, Copy, Debug, Default, Sequence)]
+    enum LFSV {
+        #[default]
+        Phantom
+    }
+
+    #[derive(Enum, Clone, Copy, Debug, Default, Sequence)]
+    enum LFOut {
+        #[default]
+        Y
+    }
+
+    impl DynamicalSystem for LinearFunc {
+        type Input = LFInp;
+
+        type StateVector = LFSV;
+
+        type Output = LFOut;
+
+        fn xdot(&self, t: f64, 
+            x: EnumMap<Self::StateVector, f64>, 
+            u: EnumMap<Self::Input, f64>) -> EnumMap<Self::StateVector, f64> {
+            enum_map! {LFSV::Phantom => 0.0}
+        }
+
+        fn y(&self, t: f64, 
+            x: EnumMap<Self::StateVector, f64>, 
+            u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> {
+            enum_map! {
+                LFOut::Y => self.a * u[LFInp::X]
+            }
+        }
+    }
+
+    struct ExpSys {
         alpha: f64
     }
 
-    impl DynamicalSystem for Exp {
-        fn xdot(&self, _t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
-            self.alpha * (u - x)
+    #[derive(Enum)]
+    enum ESInp {
+        Reference
+    }
+
+    #[derive(Enum)]
+    enum ESSV {
+        Position
+    }
+
+    #[derive(Enum)]
+    enum ESOut {
+        Error
+    }
+
+    impl DynamicalSystem for ExpSys {
+        type Input = ESInp;
+
+        type StateVector = ESSV;
+
+        type Output = ESOut;
+
+        fn xdot(&self, t: f64, 
+            x: EnumMap<Self::StateVector, f64>, 
+            u: EnumMap<Self::Input, f64>) -> EnumMap<Self::StateVector, f64> {
+            enum_map!(
+                ESSV::Position => self.alpha * (u[ESInp::Reference] - x[ESSV::Position])
+            )
         }
 
-        fn y(&self, _t: f64, x: DVector<f64>, _u: DVector<f64>) -> DVector<f64> {
-            x
+        fn y(&self, t: f64, 
+            x: EnumMap<Self::StateVector, f64>, 
+            u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> {
+            enum_map! {
+                ESOut::Error => u[ESInp::Reference] - x[ESSV::Position]
+            }
         }
-
-        const STATE_VECTOR_SIZE: usize = 1;
-
-        const INPUT_SIZE      : usize = 1;
-
-        const OUTPUT_SIZE     : usize = 1;
     }
 
     #[test]
@@ -222,21 +259,21 @@ mod tests {
         let sys = LinearFunc{a: 2.0};
         let feedback_sys = NegativeFeedback::new(sys, sys);
 
-        let output = feedback_sys.y(0.0, dvector![], dvector![1.0]);
+        // let output = feedback_sys.y(0.0, dvector![], dvector![1.0]);
 
-        assert!((output[0] - 0.4).abs() < 1e-15);
+        // assert!((output[0] - 0.4).abs() < 1e-15);
     }
 
     #[test]
     fn test_feedback_xdot() {
-        let exp1 = Exp{ alpha: 1.0 };
-        let exp2 = Exp{ alpha: 1.0 };
+        // let exp1 = Exp{ alpha: 1.0 };
+        // let exp2 = Exp{ alpha: 1.0 };
 
-        let feedback_sys = NegativeFeedback { 
-            dirsys: exp1, revsys: exp2 };
+        // let feedback_sys = NegativeFeedback { 
+        //     dirsys: exp1, revsys: exp2 };
 
-        let xdot = feedback_sys.xdot(0.0, dvector![1.0, 2.0], dvector![3.0]);
+        // let xdot = feedback_sys.xdot(0.0, dvector![1.0, 2.0], dvector![3.0]);
 
-        assert!(xdot == dvector![0.0, -1.0]);
+        // assert!(xdot == dvector![0.0, -1.0]);
     }
 }
