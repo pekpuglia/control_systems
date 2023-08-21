@@ -23,19 +23,19 @@ impl<DS1, DS2, StateVectorEnum> Series<DS1, DS2, StateVectorEnum>  {
     }
 }
 
-use paste::paste;
+// use paste::paste;
 
-macro_rules! StateVectorTypes {
-    ($base_name: ident = $sv1:ty , $sv2:ty) => {
-        paste!{
-            #[derive(Enum, Clone, Copy, Debug)]
-            enum [<$base_name $sv1 $sv2>] {
-                First($sv1),
-                Second($sv2)
-            }
-        }
-    };
-}
+// macro_rules! StateVectorTypes {
+//     ($base_name: ident = $sv1:ty , $sv2:ty) => {
+//         paste!{
+//             #[derive(Enum, Clone, Copy, Debug)]
+//             enum [<$base_name $sv1 $sv2>] {
+//                 First($sv1),
+//                 Second($sv2)
+//             }
+//         }
+//     };
+// }
 
 impl<DS1, DS2, StateVectorEnum: EnumArray<f64>> DynamicalSystem for Series<DS1, DS2, StateVectorEnum> 
 where

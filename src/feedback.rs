@@ -1,44 +1,50 @@
-use core::panic;
 use std::marker::PhantomData;
 
 use crate::*;
 
-use eqsolver::multivariable::MultiVarNewtonFD;
-use nalgebra::dvector;
+#[derive(Enum)]
+pub struct Empty;
 
-// #[derive(Clone, Copy, Debug)]
-// pub struct UnitySystem<const SIZE: usize>;
-
-// impl<const SIZE: usize> DynamicalSystem for UnitySystem<SIZE> {
-//     fn xdot(&self, _t: f64, 
-//         _x: DVector<f64>, 
-//         _u: DVector<f64>) -> DVector<f64> {
-//         dvector![]
-//     }
-
-//     fn y(&self, _t: f64, 
-//         _x: DVector<f64>, 
-//         u: DVector<f64>) -> DVector<f64> {
-//         u
-//     }
-
-//     const STATE_VECTOR_SIZE: usize = 0;
-
-//     const INPUT_SIZE      : usize = SIZE;
-
-//     const OUTPUT_SIZE     : usize = SIZE;
-// }
-
-use enum_iterator::{Sequence, all};
-
-pub trait AsMap<T: EnumArray<f64> + Sequence + Default> {
-    fn as_map(&self) -> EnumMap<T, f64>;
+impl AsMap<Empty> for DVector<f64> {
+    fn as_map(&self) -> EnumMap<Empty, f64> {
+        enum_map::enum_map! {
+            Empty => 0.0
+        }
+    }
 }
 
-impl<T: EnumArray<f64> + Sequence + Default> AsMap<T> for DVector<f64> {
-    fn as_map(&self) -> EnumMap<T, f64> {
-        EnumMap::from_iter(self.iter().zip(all::<T>()).map(|(num, key)| (key, *num) ))
+use eqsolver::multivariable::MultiVarNewtonFD;
+
+#[derive(Clone, Copy, Debug)]
+pub struct UnitySystem<IO> {
+    _phantom: PhantomData<IO>
+}
+
+impl<IO> DynamicalSystem for UnitySystem<IO> 
+where
+    IO: EnumArray<f64>
+{
+    type Input = IO;
+
+    type StateVector = Empty;
+
+    type Output = IO;
+
+    fn xdot(&self, t: f64, 
+        x: EnumMap<Self::StateVector, f64>, 
+        u: EnumMap<Self::Input, f64>) -> EnumMap<Self::StateVector, f64> {
+        dvector![].as_map()
     }
+
+    fn y(&self, t: f64, 
+        x: EnumMap<Self::StateVector, f64>, 
+        u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> {
+        u
+    }
+}
+
+pub trait AsMap<T: EnumArray<f64>> {
+    fn as_map(&self) -> EnumMap<T, f64>;
 }
 
 pub trait AsVector {
@@ -66,21 +72,18 @@ where
     DDS: DynamicalSystem,
     RDS: DynamicalSystem,
     StateVectorEnum: EnumArray<f64>,
-    RDS::Input: Default + Sequence,
-    DDS::Input: Default + Sequence,
-    StateVectorEnum: Default + Sequence,
-    DVector<f64>: AsMap<StateVectorEnum> + AsMap<RDS::Input> + AsMap<DDS::Input>,
+    DVector<f64>: AsMap<RDS::Input> + AsMap<DDS::Input>,
     EnumMap<DDS::Output, f64>: AsVector,
     EnumMap<RDS::Output, f64>: AsVector,
     EnumMap<StateVectorEnum, f64>: SubMapOps<First = DDS::StateVector, Second = RDS::StateVector>
 {
-    fn residue(&self, t: f64, y: DVector<f64>, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
+    fn residue(&self, t: f64, y: DVector<f64>, x: EnumMap<StateVectorEnum, f64>, u: DVector<f64>) -> DVector<f64> {
         y.clone() - self.dirsys.y(
             t, 
-            x.as_map().first(), 
+            x.first(), 
             (u - self.revsys.y(
                 t, 
-                x.as_map().second(), 
+                x.second(), 
                 y.as_map()).as_vector()).as_map()
             ).as_vector()
     }
@@ -89,12 +92,6 @@ where
         // NegativeFeedback::<DDS, RDS>::assert_sizes();
         NegativeFeedback { dirsys, revsys, _phantom: PhantomData }
     }
-
-    // const fn assert_sizes() {
-    //     if DDS::OUTPUT_SIZE != RDS::INPUT_SIZE || DDS::INPUT_SIZE != RDS::OUTPUT_SIZE {
-    //         panic!("Wrong sizes!")
-    //     }
-    // }
 
     pub fn dir_ref(&self) -> &DDS {
         &self.dirsys
@@ -105,14 +102,19 @@ where
     }
 }
 
-// pub type UnityFeedback<DDS, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
+pub type UnityFeedback<DDS: DynamicalSystem, StateVectorEnum> = NegativeFeedback<DDS, UnitySystem<DDS::Input>, StateVectorEnum>;
 
-// impl<DDS: DynamicalSystem, const SIZE: usize> NegativeFeedback<DDS, UnitySystem<SIZE>> {
-//     pub fn new_unity_feedback(dirsys: DDS) -> NegativeFeedback<DDS, UnitySystem<SIZE>>
-//     {
-//         NegativeFeedback::new(dirsys, UnitySystem{})
-//     }
-// }
+impl<DDS: DynamicalSystem, StateVectorEnum> NegativeFeedback<DDS, UnitySystem<DDS::Input>, StateVectorEnum> 
+where
+    StateVectorEnum: EnumArray<f64>,
+    EnumMap<StateVectorEnum, f64>: SubMapOps<First = DDS::StateVector, Second = Empty>,
+    DVector<f64>: AsMap<DDS::Input>
+{
+    pub fn new_unity_feedback(dirsys: DDS) -> NegativeFeedback<DDS, UnitySystem<DDS::Input>, StateVectorEnum>
+    {
+        NegativeFeedback::new(dirsys, UnitySystem{_phantom: PhantomData})
+    }
+}
 
 impl<DDS, RDS, StateVectorEnum: EnumArray<f64>> DynamicalSystem for 
     NegativeFeedback<DDS, RDS, StateVectorEnum> 
@@ -120,11 +122,7 @@ where
     DDS: DynamicalSystem,
     RDS: DynamicalSystem,
     StateVectorEnum: EnumArray<f64>,
-    RDS::Input: Default + Sequence,
-    DDS::Input: Default + Sequence,
-    DDS::Output: Default + Sequence,
-    StateVectorEnum: Default + Sequence,
-    DVector<f64>: AsMap<StateVectorEnum> + AsMap<RDS::Input> + AsMap<DDS::Input> + AsMap<DDS::Output>,
+    DVector<f64>: AsMap<RDS::Input> + AsMap<DDS::Input> + AsMap<DDS::Output>,
     EnumMap<DDS::Input, f64>: Copy,
     EnumMap<DDS::Output, f64>: AsVector + ConvertMap<RDS::Input>,
     EnumMap<RDS::Output, f64>: AsVector,
@@ -152,7 +150,7 @@ where
         x: EnumMap<Self::StateVector, f64>, 
         u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> {
         MultiVarNewtonFD::new(
-            |output| self.residue(t, output, x.as_vector(), u.as_vector())
+            |output| self.residue(t, output, x, u.as_vector())
         ).solve(self.dirsys.y(t, x.first(), u).as_vector()).unwrap().as_map()
     }
 }
@@ -170,23 +168,50 @@ mod tests {
         a: f64
     }
 
-    #[derive(Enum, Clone, Copy, Debug, Default, Sequence)]
+    #[derive(Enum, Clone, Copy, Debug)]
     enum LFInp {
-        #[default]
         X
     }
 
-    //terrível
-    #[derive(Enum, Clone, Copy, Debug, Default, Sequence)]
-    enum LFSV {
-        #[default]
-        Phantom
+    impl AsMap<LFInp> for DVector<f64> {
+        fn as_map(&self) -> EnumMap<LFInp, f64> {
+            enum_map! {
+                LFInp::X => self[0]
+            }
+        }
     }
 
-    #[derive(Enum, Clone, Copy, Debug, Default, Sequence)]
+    //terrível
+    #[derive(Enum, Clone, Copy, Debug)]
+    struct LFSV;
+
+    #[derive(Enum, Clone, Copy, Debug)]
     enum LFOut {
-        #[default]
         Y
+    }
+
+    impl AsMap<LFOut> for DVector<f64> {
+        fn as_map(&self) -> EnumMap<LFOut, f64> {
+            enum_map! {
+                LFOut::Y => self[0]
+            }
+        }
+    }
+
+    impl ConvertMap<LFInp> for EnumMap<LFOut, f64> {
+        fn convert(&self) -> EnumMap<LFInp, f64> {
+            enum_map! {
+                LFInp::X => self[LFOut::Y]
+            }
+        }
+    }
+
+    impl ConvertMap<LFOut> for EnumMap<LFInp, f64> {
+        fn convert(&self) -> EnumMap<LFOut, f64> {
+            enum_map! {
+                LFOut::Y => self[LFInp::X]
+            }
+        }
     }
 
     impl DynamicalSystem for LinearFunc {
@@ -199,7 +224,7 @@ mod tests {
         fn xdot(&self, t: f64, 
             x: EnumMap<Self::StateVector, f64>, 
             u: EnumMap<Self::Input, f64>) -> EnumMap<Self::StateVector, f64> {
-            enum_map! {LFSV::Phantom => 0.0}
+                x
         }
 
         fn y(&self, t: f64, 
@@ -211,23 +236,83 @@ mod tests {
         }
     }
 
+    StateVectorTypes!(Feedback = LFSV, LFSV);
+
+    impl SubMapOps for EnumMap<FeedbackLFSVLFSV, f64> {
+        type First = LFSV;
+
+        type Second = LFSV;
+
+        fn first(&self) -> EnumMap<Self::First, f64> {
+            enum_map! {
+                LFSV => 0.0
+            }
+        }
+
+        fn second(&self) -> EnumMap<Self::Second, f64> {
+            enum_map! {
+                LFSV => 0.0
+            }
+        }
+
+        fn merge(map1: EnumMap<Self::First, f64>, map2: EnumMap<Self::Second, f64>) -> Self {
+            enum_map! {
+                FeedbackLFSVLFSV::First(LFSV) => map1[LFSV],
+                FeedbackLFSVLFSV::Second(LFSV) => map2[LFSV]
+            }
+        }
+    }
+
     struct ExpSys {
         alpha: f64
     }
 
-    #[derive(Enum)]
+    
+    #[derive(Enum, Clone, Copy, Debug)]
     enum ESInp {
         Reference
     }
+    
+    impl AsMap<ESInp> for DVector<f64> {
+        fn as_map(&self) -> EnumMap<ESInp, f64> {
+            enum_map! {
+                ESInp::Reference => self[0]
+            }
+        }
+    }
 
-    #[derive(Enum)]
+    impl ConvertMap<ESOut> for EnumMap<ESInp, f64> {
+        fn convert(&self) -> EnumMap<ESOut, f64> {
+            enum_map! {
+                ESOut::Position => self[ESInp::Reference]
+            }
+        }
+    }
+    
+    #[derive(Enum, Clone, Copy, Debug)]
     enum ESSV {
         Position
     }
 
-    #[derive(Enum)]
+    #[derive(Enum, Clone, Copy, Debug)]
     enum ESOut {
-        Error
+        Position
+    }
+
+    impl AsMap<ESOut> for DVector<f64> {
+        fn as_map(&self) -> EnumMap<ESOut, f64> {
+            enum_map! {
+                ESOut::Position => self[0]
+            }
+        }
+    }
+
+    impl ConvertMap<ESInp> for EnumMap<ESOut, f64> {
+        fn convert(&self) -> EnumMap<ESInp, f64> {
+            enum_map! {
+                ESInp::Reference => self[ESOut::Position]
+            }
+        }
     }
 
     impl DynamicalSystem for ExpSys {
@@ -249,7 +334,34 @@ mod tests {
             x: EnumMap<Self::StateVector, f64>, 
             u: EnumMap<Self::Input, f64>) -> EnumMap<Self::Output, f64> {
             enum_map! {
-                ESOut::Error => u[ESInp::Reference] - x[ESSV::Position]
+                ESOut::Position => x[ESSV::Position]
+            }
+        }
+    }
+
+    StateVectorTypes!(Feedback = ESSV, ESSV);
+
+    impl SubMapOps for EnumMap<FeedbackESSVESSV, f64> {
+        type First = ESSV;
+
+        type Second = ESSV;
+
+        fn first(&self) -> EnumMap<Self::First, f64> {
+            enum_map! {
+                ESSV::Position => self[FeedbackESSVESSV::First(ESSV::Position)]
+            }
+        }
+
+        fn second(&self) -> EnumMap<Self::Second, f64> {
+            enum_map! {
+                ESSV::Position => self[FeedbackESSVESSV::Second(ESSV::Position)]
+            }
+        }
+
+        fn merge(map1: EnumMap<Self::First, f64>, map2: EnumMap<Self::Second, f64>) -> Self {
+            enum_map! {
+                FeedbackESSVESSV::First(ESSV::Position) => map1[ESSV::Position],
+                FeedbackESSVESSV::Second(ESSV::Position) => map2[ESSV::Position]
             }
         }
     }
@@ -257,23 +369,41 @@ mod tests {
     #[test]
     fn test_feedback_output() {
         let sys = LinearFunc{a: 2.0};
-        let feedback_sys = NegativeFeedback::new(sys, sys);
+        let feedback_sys: NegativeFeedback<LinearFunc, LinearFunc, FeedbackLFSVLFSV> = NegativeFeedback::new(sys, sys);
 
-        // let output = feedback_sys.y(0.0, dvector![], dvector![1.0]);
+        let state = enum_map! {
+            FeedbackLFSVLFSV::First(LFSV) => 0.0,
+            FeedbackLFSVLFSV::Second(LFSV) => 0.0
+        };
 
-        // assert!((output[0] - 0.4).abs() < 1e-15);
+        let input = enum_map! {
+            LFInp::X => 1.0
+        };
+
+        let output = feedback_sys.y(0.0, state, input);
+
+        assert!((output[LFOut::Y] - 0.4).abs() < 1e-15);
     }
 
     #[test]
     fn test_feedback_xdot() {
-        // let exp1 = Exp{ alpha: 1.0 };
-        // let exp2 = Exp{ alpha: 1.0 };
+        let exp1 = ExpSys{ alpha: 1.0 };
+        let exp2 = ExpSys{ alpha: 1.0 };
 
-        // let feedback_sys = NegativeFeedback { 
-        //     dirsys: exp1, revsys: exp2 };
+        let feedback_sys: NegativeFeedback<ExpSys, ExpSys, FeedbackESSVESSV> = NegativeFeedback::new(
+            exp1, exp2);
 
-        // let xdot = feedback_sys.xdot(0.0, dvector![1.0, 2.0], dvector![3.0]);
+        let state = enum_map! {
+            FeedbackESSVESSV::First(ESSV::Position) => 1.0,
+            FeedbackESSVESSV::Second(ESSV::Position) => 2.0
+        };
 
-        // assert!(xdot == dvector![0.0, -1.0]);
+        let input = enum_map! {
+            ESInp::Reference => 3.0
+        };
+
+        let xdot = feedback_sys.xdot(0.0, state, input);
+
+        assert!(xdot.as_vector() == dvector![0.0, -1.0]);
     }
 }

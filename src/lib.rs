@@ -100,10 +100,23 @@ trait ConvertMap<DestType: EnumArray<f64>> {
     fn convert(&self) -> EnumMap<DestType, f64>;
 }
 
+use paste::paste;
 
-// mod series;
-// pub use series::Series;
+macro_rules! StateVectorTypes {
+    ($base_name: ident = $sv1:ty , $sv2:ty) => {
+        paste!{
+            #[derive(Enum, Clone, Copy, Debug)]
+            enum [<$base_name $sv1 $sv2>] {
+                First($sv1),
+                Second($sv2)
+            }
+        }
+    };
+}
+
+mod series;
+pub use series::Series;
 
 
 mod feedback;
-// pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
+pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
