@@ -1,4 +1,6 @@
 
+use std::marker::PhantomData;
+
 use crate::*;
 #[derive(Clone, Copy, Debug)]
 pub struct Series<DS1, DS2>
@@ -7,7 +9,7 @@ pub struct Series<DS1, DS2>
     dynsys2: DS2
 }
 
-impl<DS1, DS2> Series<DS1, DS2>  {
+impl<DS1: DynamicalSystem, DS2: DynamicalSystem> Series<DS1, DS2>  {
     pub fn new(ds1: DS1, ds2: DS2) -> Self {
         Series { dynsys1: ds1, dynsys2: ds2 }
     }
@@ -36,12 +38,12 @@ where
         u: DVector<f64>) -> DVector<f64> {
         let mut x1dot = self.dynsys1.xdot(
             t, 
-            x.rows(0, DS1::STATE_VECTOR_SIZE).into(), 
+            StateVector::<Self>::new(x.clone()).x1().data, 
             u.clone()
         );
         let x2dot = self.dynsys2.xdot(
             t, 
-            x.rows(DS1::STATE_VECTOR_SIZE, DS2::STATE_VECTOR_SIZE).into(), 
+            StateVector::<Self>::new(x.clone()).x2().data, 
             self.dynsys1.y(
                 t, x.rows(0, DS1::STATE_VECTOR_SIZE).into(), u)
         );
@@ -56,55 +58,32 @@ where
         u: DVector<f64>) -> DVector<f64> {
         let u1 = self.dynsys1.y(
             t, 
-            x.rows(0, DS1::STATE_VECTOR_SIZE).into(), 
+            StateVector::<Self>::new(x.clone()).x1().data, 
             u
         );
 
         self.dynsys2.y(
             t, 
-            x.rows(DS1::STATE_VECTOR_SIZE, DS2::STATE_VECTOR_SIZE).into(), 
+            StateVector::<Self>::new(x.clone()).x2().data, 
             u1)
     }
 }
 
-// impl<const SVS1: usize, 
-//     const SVS2: usize, 
-//     const IS1: usize, 
-//     const OS1IS2: usize, 
-//     const OS2: usize, 
-//     DS1: DynamicalSystem, 
-//     DS2: DynamicalSystem> DynamicalSystem for Series<DS1, DS2, SVS1, SVS2, OS1IS2> 
-// {
-    
-//     fn xdot(&self, t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
-//         let x1dot = self.dynsys1.xdot(
-//             t, 
-//             x.rows(0, 1),
-//             u
-//         );
 
-//         let x2dot = self.dynsys2.xdot(
-//             t, 
-//             x.rows(0, 1), 
-//             self.dynsys1.y(t, x.rows, u));
-        
-//         //não reclama por algum motivo
-//         SVector::from_iterator(
-//             x1dot
-//             .into_iter()
-//             .chain(x2dot.into_iter())
-//             .copied()
-//         )
-//     }
-
-//     fn y(&self, t: f64, x: SVector<f64, {SVS1 + SVS2}>, u: SVector<f64, IS1>) -> SVector<f64, OS2> {
-//         self.dynsys2.y(
-//             t, 
-//             SVector::from_row_slice(x.fixed_rows::<SVS2>(SVS1).data.into_slice()), 
-//             self.dynsys1.y(t, SVector::from_row_slice(x.fixed_rows::<SVS1>(0).data.into_slice()), u))
-//     }
-
-// }
+impl<DS1: DynamicalSystem, DS2: DynamicalSystem> StateVector<Series<DS1, DS2>> {
+    fn x1(&self) -> StateVector<DS1> {
+        StateVector {
+            data: self.data.rows(0, DS1::STATE_VECTOR_SIZE).into(),
+            _phantom: PhantomData
+        }
+    }
+    fn x2(&self) -> StateVector<DS2> {
+        StateVector {
+            data: self.data.rows(DS1::STATE_VECTOR_SIZE, DS2::STATE_VECTOR_SIZE).into(),
+            _phantom: PhantomData
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -180,5 +159,15 @@ mod tests {
 
         let out = series.y(0.0, dvector![0.5, 0.7, 1.0], dvector![1.0]);
         assert!(out == [0.7].into())
+    }
+
+    #[test]
+    fn test_state_vector_slicing() {
+        let x = dvector![1.0, 2.0, 3.0];
+        
+        let sv = StateVector::<Series<Exp, SecondOrder>>::new(x);
+        
+        assert!(sv.x1().data == [1.0].into());
+        assert!(sv.x2().data == dvector![2.0, 3.0]);
     }
 }

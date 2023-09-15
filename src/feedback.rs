@@ -45,10 +45,10 @@ where
     fn residue(&self, t: f64, y: DVector<f64>, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
         y.clone() - self.dirsys.y(
             t, 
-            x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
+            StateVector::<Self>::new(x.clone()).dirx().data, 
             u - self.revsys.y(
                 t, 
-                x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), 
+                StateVector::<Self>::new(x.clone()).revx().data, 
                 y)
             )
     }
@@ -103,13 +103,13 @@ where
 
         let mut dirxdot = self.dirsys.xdot(
             t, 
-            x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
+            StateVector::<Self>::new(x.clone()).dirx().data, 
             u - rev_output
         );
 
         let revxdot = self.revsys.xdot(
             t, 
-            x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), 
+            StateVector::<Self>::new(x.clone()).revx().data, 
             output
         );
 
@@ -126,12 +126,26 @@ where
         )
         .solve(self.dirsys.y(
             t, 
-            x.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
+            StateVector::<Self>::new(x.clone()).dirx().data, 
             u.clone())
         )
         .unwrap()
     }
 }
+
+impl<DDS: DynamicalSystem, RDS: DynamicalSystem> StateVector<NegativeFeedback<DDS, RDS>>  {
+    fn dirx(&self) -> StateVector<DDS> {
+        StateVector { 
+            data: self.data.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
+            _phantom: PhantomData }
+    }
+    fn revx(&self) -> StateVector<RDS> {
+        StateVector { 
+            data: self.data.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), 
+            _phantom: PhantomData }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
