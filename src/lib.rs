@@ -27,6 +27,7 @@ pub struct StateVector<System: DynamicalSystem> {
 
 impl<System: DynamicalSystem> StateVector<System>  {
     pub fn new(x: DVector<f64>) -> Self {
+        assert!(x.len() == System::STATE_VECTOR_SIZE);
         StateVector { data: x, _phantom: PhantomData }
     }
 }
