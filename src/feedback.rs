@@ -220,4 +220,11 @@ mod tests {
 
         assert!(xdot == dvector![0.0, -1.0]);
     }
+
+    #[test]
+    fn test_ss_slicing() {
+        let sv = StateVector::<NegativeFeedback<Exp, Exp>>::new(dvector![1.0, 2.0]);
+        assert!(sv.dirx().data == [1.0].into());
+        assert!(sv.revx().data == [2.0].into())
+    }
 }
