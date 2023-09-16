@@ -27,7 +27,7 @@ pub struct StateVector<System: DynamicalSystem> {
 }
 
 impl<System: DynamicalSystem> StateVector<System>  {
-    fn new(x: DVector<f64>) -> Self {
+    pub fn new(x: DVector<f64>) -> Self {
         StateVector { data: x, _phantom: PhantomData }
     }
 }
