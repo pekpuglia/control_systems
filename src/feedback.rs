@@ -134,12 +134,12 @@ where
 }
 
 impl<DDS: DynamicalSystem, RDS: DynamicalSystem> StateVector<NegativeFeedback<DDS, RDS>>  {
-    fn dirx(&self) -> StateVector<DDS> {
+    pub fn dirx(&self) -> StateVector<DDS> {
         StateVector { 
             data: self.data.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
             _phantom: PhantomData }
     }
-    fn revx(&self) -> StateVector<RDS> {
+    pub fn revx(&self) -> StateVector<RDS> {
         StateVector { 
             data: self.data.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), 
             _phantom: PhantomData }

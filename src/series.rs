@@ -71,13 +71,13 @@ where
 
 
 impl<DS1: DynamicalSystem, DS2: DynamicalSystem> StateVector<Series<DS1, DS2>> {
-    fn x1(&self) -> StateVector<DS1> {
+    pub fn x1(&self) -> StateVector<DS1> {
         StateVector {
             data: self.data.rows(0, DS1::STATE_VECTOR_SIZE).into(),
             _phantom: PhantomData
         }
     }
-    fn x2(&self) -> StateVector<DS2> {
+    pub fn x2(&self) -> StateVector<DS2> {
         StateVector {
             data: self.data.rows(DS1::STATE_VECTOR_SIZE, DS2::STATE_VECTOR_SIZE).into(),
             _phantom: PhantomData
