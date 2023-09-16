@@ -1,5 +1,6 @@
 use crate::*;
 
+#[derive(Clone, Copy, Debug)]
 pub struct Parallel<TDS, BDS> {
     top_sys: TDS,
     bot_sys: BDS
