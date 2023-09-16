@@ -39,3 +39,4 @@ mod feedback;
 pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
 
 mod parallel;
+pub use parallel::Parallel;
