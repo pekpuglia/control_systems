@@ -6,7 +6,7 @@ pub struct Parallel<TDS, BDS> {
 }
 
 impl<TDS: DynamicalSystem, BDS: DynamicalSystem> Parallel<TDS, BDS> {
-    fn new(top_sys: TDS, bot_sys: BDS) -> Self {
+    pub fn new(top_sys: TDS, bot_sys: BDS) -> Self {
         Self { top_sys, bot_sys }
     }
 
