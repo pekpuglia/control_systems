@@ -6,6 +6,8 @@ pub use nalgebra::{DVector, dvector};
 //remove cloning?
 //make it size-safe!
 //system lib?
+//state vector builder
+//receive only statevectors, inputvectors and outputvectors?
 pub trait DynamicalSystem {
 
     const STATE_VECTOR_SIZE: usize;
