@@ -7,7 +7,6 @@ pub use nalgebra::{DVector, dvector};
 //make it size-safe!
 //system lib?
 //concatenation
-//inspection
 pub trait DynamicalSystem {
 
     const STATE_VECTOR_SIZE: usize;
@@ -39,3 +38,5 @@ pub use series::Series;
 
 mod feedback;
 pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
+
+mod parallel;
