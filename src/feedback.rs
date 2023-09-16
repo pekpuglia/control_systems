@@ -71,6 +71,15 @@ where
     pub fn rev_ref(&self) -> &RDS {
         &self.revsys
     }
+
+    pub fn revy(&self, t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
+        let output = self.y(t, x.clone(), u.clone());
+        self.revsys.y(t, StateVector::<Self>::new(x).revx().data, output.clone())
+    }
+
+    pub fn error(&self, t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
+        u.clone() - self.revy(t, x, u)
+    }
 }
 
 pub type UnityFeedback<DDS, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
@@ -99,7 +108,7 @@ where
         u: DVector<f64>) -> DVector<f64> {
         
         let output = self.y(t, x.clone(), u.clone());
-        let rev_output = self.revsys.y(t, x.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), output.clone());
+        let rev_output = self.revsys.y(t, StateVector::<Self>::new(x.clone()).revx().data, output.clone());
 
         let mut dirxdot = self.dirsys.xdot(
             t, 
@@ -177,7 +186,7 @@ mod tests {
 
         const OUTPUT_SIZE     : usize = 1;
     }
-
+    #[derive(Clone, Copy)]
     struct Exp {
         alpha: f64
     }
@@ -226,5 +235,21 @@ mod tests {
         let sv = StateVector::<NegativeFeedback<Exp, Exp>>::new(dvector![1.0, 2.0]);
         assert!(sv.dirx().data == [1.0].into());
         assert!(sv.revx().data == [2.0].into())
+    }
+
+    #[test]
+    fn test_revy() {
+        let sys = LinearFunc{a: 2.0};
+        let feedback_sys = NegativeFeedback::new(sys, sys);
+
+        assert!(feedback_sys.revy(0.0, dvector![], dvector![1.0]) == dvector![0.8])
+    }
+
+    #[test]
+    fn test_error() {
+        let sys = LinearFunc{a: 2.0};
+        let feedback_sys = NegativeFeedback::new(sys, sys);
+        dbg!(feedback_sys.error(0.0, dvector![], dvector![1.0]));
+        assert!((feedback_sys.error(0.0, dvector![], dvector![1.0]) - dvector![0.2]).abs().max() < 1e-4);        
     }
 }
