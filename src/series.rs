@@ -20,6 +20,14 @@ impl<DS1: DynamicalSystem, DS2: DynamicalSystem> Series<DS1, DS2>  {
     pub fn ds2_ref(&self) -> &DS2 {
         &self.dynsys2
     }
+
+    pub fn y1(&self, t: f64, x: DVector<f64>, u:DVector<f64>) -> DVector<f64> {
+        self.dynsys1.y(
+            t, 
+            StateVector::<Self>::new(x.clone()).x1().data, 
+            u
+        )
+    }
 }
 
 impl<DS1, DS2> DynamicalSystem for Series<DS1, DS2> 
@@ -169,5 +177,17 @@ mod tests {
         
         assert!(sv.x1().data == [1.0].into());
         assert!(sv.x2().data == dvector![2.0, 3.0]);
+    }
+
+    #[test]
+    fn test_y1() {
+        let series = Series {
+            dynsys1: Exp{alpha: 0.5},
+            dynsys2: SecondOrder{ k: 1.0, c: 1.0 }
+        };
+
+        let sys1 = Exp{ alpha: 0.5 };
+
+        assert!(series.y1(0.0, dvector![0.5, 0.7, 1.0], dvector![1.0]) == sys1.y(0.0, dvector![0.5], dvector![1.0]))
     }
 }
