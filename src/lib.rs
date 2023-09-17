@@ -49,6 +49,13 @@ impl<System: DynamicalSystem> From<&[f64]> for StateVector<System>  {
     }
 }
 
+impl<System: DynamicalSystem, const N: usize> From<[f64; N]> for StateVector<System> {
+    fn from(value: [f64; N]) -> Self {
+        assert!(N == System::STATE_VECTOR_SIZE);
+        StateVector { data: DVector::from_iterator(N, value.into_iter()), _phantom: PhantomData }
+    }
+}
+
 mod series;
 pub use series::Series;
 
