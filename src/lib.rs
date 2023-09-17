@@ -32,6 +32,12 @@ impl<System: DynamicalSystem> StateVector<System>  {
         assert!(x.len() == System::STATE_VECTOR_SIZE);
         StateVector { data: x, _phantom: PhantomData }
     }
+
+    pub fn from_slice(x: &[f64]) -> Self {
+        assert!(x.len() == System::STATE_VECTOR_SIZE);
+        StateVector { data: DVector::from_row_slice(x), 
+            _phantom: PhantomData }
+    }
 }
 
 mod series;
