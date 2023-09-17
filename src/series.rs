@@ -93,6 +93,21 @@ impl<DS1: DynamicalSystem, DS2: DynamicalSystem> StateVector<Series<DS1, DS2>> {
     }
 }
 
+impl<System: DynamicalSystem> StateVector<System> {
+    pub fn series<S2: DynamicalSystem>(&self, sv2: StateVector<S2>) -> StateVector<Series<System, S2>>{
+        let dataiter = self.data
+        .iter()
+        .chain(
+            sv2.data
+                .iter()
+        ).copied();
+        StateVector { 
+            data: DVector::from_iterator(
+                System::STATE_VECTOR_SIZE + S2::STATE_VECTOR_SIZE, 
+                dataiter), _phantom: PhantomData }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -189,5 +204,13 @@ mod tests {
         let sys1 = Exp{ alpha: 0.5 };
 
         assert!(series.y1(0.0, dvector![0.5, 0.7, 1.0], dvector![1.0]) == sys1.y(0.0, dvector![0.5], dvector![1.0]))
+    }
+
+    #[test]
+    fn test_series_builder() {
+        let sv1: StateVector<Exp> = [0.5].into();
+        let sv2: StateVector<SecondOrder> = [0.7, 1.0].into();
+        let svseries = sv1.series(sv2);
+        assert!(svseries.data == dvector![0.5, 0.7, 1.0])
     }
 }
