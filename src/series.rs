@@ -208,9 +208,10 @@ mod tests {
 
     #[test]
     fn test_series_builder() {
-        let sv1: StateVector<Exp> = [0.5].into();
-        let sv2: StateVector<SecondOrder> = [0.7, 1.0].into();
-        let svseries = sv1.series(sv2);
+        let svseries = [0.5].into_sv::<Exp>()
+            .series(
+                [0.7, 1.0].into_sv::<SecondOrder>()
+        );
         assert!(svseries.data == dvector![0.5, 0.7, 1.0])
     }
 }
