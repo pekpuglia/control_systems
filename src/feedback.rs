@@ -155,6 +155,20 @@ impl<DDS: DynamicalSystem, RDS: DynamicalSystem> StateVector<NegativeFeedback<DD
     }
 }
 
+impl<DDS: DynamicalSystem> StateVector<DDS>  {
+    pub fn feedback<RDS: DynamicalSystem>(&self, rev_sv: StateVector<RDS>) -> StateVector<NegativeFeedback<DDS, RDS>> {
+        let dataiter = self.data
+        .iter()
+        .chain(
+            rev_sv.data
+                .iter()
+        ).copied();
+        StateVector { 
+            data: DVector::from_iterator(
+                DDS::STATE_VECTOR_SIZE + RDS::STATE_VECTOR_SIZE, 
+                dataiter), _phantom: PhantomData }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -251,5 +265,13 @@ mod tests {
         let feedback_sys = NegativeFeedback::new(sys, sys);
         dbg!(feedback_sys.error(0.0, dvector![], dvector![1.0]));
         assert!((feedback_sys.error(0.0, dvector![], dvector![1.0]) - dvector![0.2]).abs().max() < 1e-4);        
+    }
+
+    #[test]
+    fn test_feedback_builder() {
+        let sv_feedback = [1.0].into_sv::<Exp>()
+            .feedback([2.0].into_sv::<Exp>());
+
+        assert!(sv_feedback.data == dvector![1.0, 2.0])
     }
 }
