@@ -86,6 +86,21 @@ impl <TDS: DynamicalSystem, BDS: DynamicalSystem> StateVector<Parallel<TDS, BDS>
     }
 }
 
+impl<TDS: DynamicalSystem> StateVector<TDS>  {
+    pub fn parallel<BDS: DynamicalSystem>(&self, bot_sv: StateVector<BDS>) -> StateVector<Parallel<TDS, BDS>> {
+        let dataiter = self.data
+        .iter()
+        .chain(
+            bot_sv.data
+                .iter()
+        ).copied();
+        StateVector { 
+            data: DVector::from_iterator(
+                TDS::STATE_VECTOR_SIZE + BDS::STATE_VECTOR_SIZE, 
+                dataiter), _phantom: PhantomData }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,5 +145,11 @@ mod tests {
 
         let y = par.y(0.0, dvector![1.0, 2.0], dvector![1.0, 0.0]);
         assert!(y == dvector![1.0, 2.0])
+    }
+
+    #[test]
+    fn test_parallel_sv_creation() {
+        let sv = [1.0].into_sv::<Exp>().parallel([2.0].into_sv::<Exp>());
+        assert!(sv.data == dvector![1.0, 2.0])
     }
 }
