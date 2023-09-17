@@ -33,17 +33,19 @@ impl<System: DynamicalSystem> StateVector<System>  {
         assert!(x.len() == System::STATE_VECTOR_SIZE);
         StateVector { data: x, _phantom: PhantomData }
     }
-
-    pub fn from_slice(x: &[f64]) -> Self {
-        assert!(x.len() == System::STATE_VECTOR_SIZE);
-        StateVector { data: DVector::from_row_slice(x), 
-            _phantom: PhantomData }
-    }
 }
 
 impl<System: DynamicalSystem> From<DVector<f64>> for StateVector<System> {
     fn from(value: DVector<f64>) -> Self {
         StateVector { data: value, _phantom: PhantomData }
+    }
+}
+
+impl<System: DynamicalSystem> From<&[f64]> for StateVector<System>  {
+    fn from(value: &[f64]) -> Self {
+        assert!(value.len() == System::STATE_VECTOR_SIZE);
+        StateVector { data: DVector::from_row_slice(value), 
+            _phantom: PhantomData }
     }
 }
 
