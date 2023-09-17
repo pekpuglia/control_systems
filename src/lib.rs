@@ -56,6 +56,16 @@ impl<System: DynamicalSystem, const N: usize> From<[f64; N]> for StateVector<Sys
     }
 }
 
+pub trait IntoSV {
+    fn into_sv<System: DynamicalSystem>(self) -> StateVector<System>;
+}
+
+impl<const N: usize> IntoSV for [f64; N] {
+    fn into_sv<System: DynamicalSystem>(self) -> StateVector<System> {
+        self.into()
+    }
+}
+
 mod series;
 pub use series::Series;
 
