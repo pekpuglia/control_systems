@@ -75,14 +75,21 @@ impl<TDS: DynamicalSystem, BDS: DynamicalSystem> DynamicalSystem for Parallel<TD
 
 impl <TDS: DynamicalSystem, BDS: DynamicalSystem> StateVector<Parallel<TDS, BDS>> {
     pub fn topx(&self) -> StateVector<TDS> {
-        StateVector { 
-            data: self.data.rows(0, TDS::STATE_VECTOR_SIZE).into(), 
-            _phantom: PhantomData }
+        self.data
+        .rows(
+            0, 
+            TDS::STATE_VECTOR_SIZE)
+        .as_slice()
+        .into()
     }
 
     pub fn botx(&self) -> StateVector<BDS> {
-        StateVector { data: self.data.rows(TDS::STATE_VECTOR_SIZE, BDS::STATE_VECTOR_SIZE).into(), 
-            _phantom: PhantomData }
+        self.data
+        .rows(
+            TDS::STATE_VECTOR_SIZE, 
+            BDS::STATE_VECTOR_SIZE)
+        .as_slice()
+        .into()
     }
 }
 
@@ -94,10 +101,11 @@ impl<TDS: DynamicalSystem> StateVector<TDS>  {
             bot_sv.data
                 .iter()
         ).copied();
-        StateVector { 
-            data: DVector::from_iterator(
+        StateVector::new(
+            DVector::from_iterator(
                 TDS::STATE_VECTOR_SIZE + BDS::STATE_VECTOR_SIZE, 
-                dataiter), _phantom: PhantomData }
+                dataiter)
+        )
     }
 }
 

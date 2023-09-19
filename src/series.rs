@@ -80,16 +80,20 @@ where
 
 impl<DS1: DynamicalSystem, DS2: DynamicalSystem> StateVector<Series<DS1, DS2>> {
     pub fn x1(&self) -> StateVector<DS1> {
-        StateVector {
-            data: self.data.rows(0, DS1::STATE_VECTOR_SIZE).into(),
-            _phantom: PhantomData
-        }
+        self.data
+        .rows(
+            0, 
+            DS1::STATE_VECTOR_SIZE)
+        .as_slice()
+        .into()
     }
     pub fn x2(&self) -> StateVector<DS2> {
-        StateVector {
-            data: self.data.rows(DS1::STATE_VECTOR_SIZE, DS2::STATE_VECTOR_SIZE).into(),
-            _phantom: PhantomData
-        }
+        self.data
+        .rows(
+            DS1::STATE_VECTOR_SIZE, 
+            DS2::STATE_VECTOR_SIZE)
+        .as_slice()
+        .into()
     }
 }
 
@@ -101,10 +105,10 @@ impl<System: DynamicalSystem> StateVector<System> {
             sv2.data
                 .iter()
         ).copied();
-        StateVector { 
-            data: DVector::from_iterator(
+        StateVector::new(DVector::from_iterator(
                 System::STATE_VECTOR_SIZE + S2::STATE_VECTOR_SIZE, 
-                dataiter), _phantom: PhantomData }
+                dataiter)
+        )
     }
 }
 

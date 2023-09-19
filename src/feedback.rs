@@ -144,14 +144,21 @@ where
 
 impl<DDS: DynamicalSystem, RDS: DynamicalSystem> StateVector<NegativeFeedback<DDS, RDS>>  {
     pub fn dirx(&self) -> StateVector<DDS> {
-        StateVector { 
-            data: self.data.rows(0, DDS::STATE_VECTOR_SIZE).into(), 
-            _phantom: PhantomData }
+        self.data
+        .rows(
+            0, 
+            DDS::STATE_VECTOR_SIZE)
+        .as_slice()
+        .into()
     }
+    
     pub fn revx(&self) -> StateVector<RDS> {
-        StateVector { 
-            data: self.data.rows(DDS::STATE_VECTOR_SIZE, RDS::STATE_VECTOR_SIZE).into(), 
-            _phantom: PhantomData }
+        self.data
+        .rows(
+            DDS::STATE_VECTOR_SIZE, 
+            RDS::STATE_VECTOR_SIZE)
+        .as_slice()
+        .into() 
     }
 }
 
@@ -163,10 +170,9 @@ impl<DDS: DynamicalSystem> StateVector<DDS>  {
             rev_sv.data
                 .iter()
         ).copied();
-        StateVector { 
-            data: DVector::from_iterator(
+        StateVector::new(DVector::from_iterator(
                 DDS::STATE_VECTOR_SIZE + RDS::STATE_VECTOR_SIZE, 
-                dataiter), _phantom: PhantomData }
+                dataiter))
     }
 }
 
