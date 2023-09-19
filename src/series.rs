@@ -1,6 +1,4 @@
 
-use std::marker::PhantomData;
-
 use crate::*;
 #[derive(Clone, Copy, Debug)]
 pub struct Series<DS1, DS2>
