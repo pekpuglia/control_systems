@@ -6,9 +6,7 @@ pub use nalgebra::{DVector, dvector};
 //remove cloning?
 //make it size-safe!
 //system lib?
-//state vector builder
-//receive only statevectors, inputvectors and outputvectors?
-//index for statevectors
+//receive only inputvectors and outputvectors?
 
 mod state_vector;
 pub use state_vector::{StateVector, IntoSV};
