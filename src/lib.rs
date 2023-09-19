@@ -18,6 +18,7 @@ pub trait DynamicalSystem {
     const STATE_VECTOR_SIZE: usize;
     const INPUT_SIZE      : usize;
     const OUTPUT_SIZE     : usize;
+    
     //accept references or StateVectors!!!
     fn xdot(&self, t: f64, 
         x: DVector<f64>, 

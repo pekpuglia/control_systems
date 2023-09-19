@@ -37,7 +37,7 @@ impl<System: DynamicalSystem> Index<usize> for StateVector<System> {
     type Output = f64;
 
     fn index(&self, index: usize) -> &Self::Output {
-        todo!()
+        &self.data[index]
     }
 
 
