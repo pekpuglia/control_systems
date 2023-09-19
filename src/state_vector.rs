@@ -30,3 +30,15 @@ impl IntoSV for &[f64] {
         StateVector { data: DVector::from_row_slice(self), _phantom: PhantomData }
     }
 }
+
+use std::ops::Index;
+
+impl<System: DynamicalSystem> Index<usize> for StateVector<System> {
+    type Output = f64;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        todo!()
+    }
+
+
+}
