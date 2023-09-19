@@ -83,7 +83,7 @@ impl<DS1: DynamicalSystem, DS2: DynamicalSystem> StateVector<Series<DS1, DS2>> {
             0, 
             DS1::STATE_VECTOR_SIZE)
         .as_slice()
-        .into()
+        .into_sv::<DS1>()
     }
     pub fn x2(&self) -> StateVector<DS2> {
         self.data
@@ -91,7 +91,7 @@ impl<DS1: DynamicalSystem, DS2: DynamicalSystem> StateVector<Series<DS1, DS2>> {
             DS1::STATE_VECTOR_SIZE, 
             DS2::STATE_VECTOR_SIZE)
         .as_slice()
-        .into()
+        .into_sv::<DS2>()
     }
 }
 

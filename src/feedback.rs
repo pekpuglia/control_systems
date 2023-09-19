@@ -149,7 +149,7 @@ impl<DDS: DynamicalSystem, RDS: DynamicalSystem> StateVector<NegativeFeedback<DD
             0, 
             DDS::STATE_VECTOR_SIZE)
         .as_slice()
-        .into()
+        .into_sv::<DDS>()
     }
     
     pub fn revx(&self) -> StateVector<RDS> {
@@ -158,7 +158,7 @@ impl<DDS: DynamicalSystem, RDS: DynamicalSystem> StateVector<NegativeFeedback<DD
             DDS::STATE_VECTOR_SIZE, 
             RDS::STATE_VECTOR_SIZE)
         .as_slice()
-        .into() 
+        .into_sv::<RDS>() 
     }
 }
 

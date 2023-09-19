@@ -80,7 +80,7 @@ impl <TDS: DynamicalSystem, BDS: DynamicalSystem> StateVector<Parallel<TDS, BDS>
             0, 
             TDS::STATE_VECTOR_SIZE)
         .as_slice()
-        .into()
+        .into_sv::<TDS>()
     }
 
     pub fn botx(&self) -> StateVector<BDS> {
@@ -89,7 +89,7 @@ impl <TDS: DynamicalSystem, BDS: DynamicalSystem> StateVector<Parallel<TDS, BDS>
             TDS::STATE_VECTOR_SIZE, 
             BDS::STATE_VECTOR_SIZE)
         .as_slice()
-        .into()
+        .into_sv::<BDS>()
     }
 }
 
