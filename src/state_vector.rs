@@ -1,7 +1,7 @@
 use crate::*;
 
 #[derive(Clone, Debug)]
-pub struct StateVector<System: DynamicalSystem> {
+pub struct StateVector<System: DynamicalSystem + ?Sized> {
     pub data: DVector<f64>,
     _phantom: PhantomData<System>
 }
@@ -12,7 +12,7 @@ impl<System: DynamicalSystem> StateVector<System>  {
         StateVector { data: x, _phantom: PhantomData }
     }
 }
-
+//refazer o from dvector
 pub trait IntoSV {
     fn into_sv<System: DynamicalSystem>(self) -> StateVector<System>;
 }

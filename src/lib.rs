@@ -11,7 +11,7 @@ pub use nalgebra::{DVector, dvector};
 //index for statevectors
 
 mod state_vector;
-pub(crate) use state_vector::{StateVector, IntoSV};
+pub use state_vector::{StateVector, IntoSV};
 
 pub trait DynamicalSystem {
 
@@ -21,10 +21,10 @@ pub trait DynamicalSystem {
     
     //accept references or StateVectors!!!
     fn xdot(&self, t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64>;
     fn y(&self, t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64>;
 }
 

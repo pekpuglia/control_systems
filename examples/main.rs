@@ -1,4 +1,4 @@
-use control_systems::{DynamicalSystem, DVector, dvector, UnityFeedback};
+use control_systems::{DynamicalSystem, DVector, dvector, UnityFeedback, StateVector, IntoSV, NegativeFeedback};
 
 #[derive(Clone, Copy)]
 struct SecondOrder {
@@ -8,7 +8,7 @@ struct SecondOrder {
 
 impl DynamicalSystem for SecondOrder {
     fn xdot(&self, _t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64> {
         dvector![
             x[1],
@@ -17,7 +17,7 @@ impl DynamicalSystem for SecondOrder {
     }
 
     fn y(&self, _t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         _u: DVector<f64>) -> DVector<f64> {
         dvector![x[0]]
     }
@@ -34,7 +34,7 @@ fn main() {
 
     let feedback1 = UnityFeedback::<SecondOrder, 1>::new_unity_feedback( test);
 
-    let output = feedback1.y(0.0, dvector![0.0, 1.0, 0.0, 1.0], dvector![1.0]);
+    let output = feedback1.y(0.0, &[0.0, 1.0, 0.0, 1.0].into_sv::<UnityFeedback<SecondOrder, 1>>(), dvector![1.0]);
 
     println!("{}", output);
 }

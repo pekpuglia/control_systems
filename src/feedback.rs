@@ -10,13 +10,13 @@ pub struct UnitySystem<const SIZE: usize>;
 
 impl<const SIZE: usize> DynamicalSystem for UnitySystem<SIZE> {
     fn xdot(&self, _t: f64, 
-        _x: DVector<f64>, 
+        _x: &StateVector<Self>, 
         _u: DVector<f64>) -> DVector<f64> {
         dvector![]
     }
 
     fn y(&self, _t: f64, 
-        _x: DVector<f64>, 
+        _x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64> {
         u
     }
@@ -42,13 +42,13 @@ where
     DDS: DynamicalSystem,
     RDS: DynamicalSystem 
 {
-    fn residue(&self, t: f64, y: DVector<f64>, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
+    fn residue(&self, t: f64, y: DVector<f64>, x: &StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
         y.clone() - self.dirsys.y(
             t, 
-            StateVector::<Self>::new(x.clone()).dirx().data, 
+            &x.dirx(),
             u - self.revsys.y(
                 t, 
-                StateVector::<Self>::new(x.clone()).revx().data, 
+                &x.revx(), 
                 y)
             )
     }
@@ -72,12 +72,12 @@ where
         &self.revsys
     }
 
-    pub fn revy(&self, t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
-        let output = self.y(t, x.clone(), u.clone());
-        self.revsys.y(t, StateVector::<Self>::new(x).revx().data, output.clone())
+    pub fn revy(&self, t: f64, x: StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
+        let output = self.y(t, &x, u.clone());
+        self.revsys.y(t, &x.revx(), output.clone())
     }
 
-    pub fn error(&self, t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
+    pub fn error(&self, t: f64, x: StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
         u.clone() - self.revy(t, x, u)
     }
 }
@@ -104,21 +104,21 @@ where
     const OUTPUT_SIZE     : usize = DDS::OUTPUT_SIZE;
 
     fn xdot(&self, t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64> {
         
         let output = self.y(t, x.clone(), u.clone());
-        let rev_output = self.revsys.y(t, StateVector::<Self>::new(x.clone()).revx().data, output.clone());
+        let rev_output = self.revsys.y(t, &x.revx(), output.clone());
 
         let mut dirxdot = self.dirsys.xdot(
             t, 
-            StateVector::<Self>::new(x.clone()).dirx().data, 
+            &x.dirx(), 
             u - rev_output
         );
 
         let revxdot = self.revsys.xdot(
             t, 
-            StateVector::<Self>::new(x.clone()).revx().data, 
+            &x.revx(),
             output
         );
 
@@ -128,14 +128,14 @@ where
     }
 
     fn y(&self, t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64> {
         MultiVarNewtonFD::new(
-            |output| self.residue(t, output, x.clone(), u.clone())
+            |output| self.residue(t, output, x, u.clone())
         )
         .solve(self.dirsys.y(
             t, 
-            StateVector::<Self>::new(x.clone()).dirx().data, 
+            &x.dirx(), 
             u.clone())
         )
         .unwrap()
@@ -189,13 +189,13 @@ mod tests {
 
     impl DynamicalSystem for LinearFunc {
         fn xdot(&self, _t: f64, 
-            _x: nalgebra::DVector<f64>, 
+            _x: &StateVector<Self>, 
             _u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
             dvector![]
         }
 
         fn y(&self, _t: f64, 
-            _x: nalgebra::DVector<f64>, 
+            _x: &StateVector<Self>, 
             u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
             self.a * u
         }
@@ -212,12 +212,12 @@ mod tests {
     }
 
     impl DynamicalSystem for Exp {
-        fn xdot(&self, _t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
-            self.alpha * (u - x)
+        fn xdot(&self, _t: f64, x: &StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
+            self.alpha * (u - x.data.clone())
         }
 
-        fn y(&self, _t: f64, x: DVector<f64>, _u: DVector<f64>) -> DVector<f64> {
-            x
+        fn y(&self, _t: f64, x: &StateVector<Self>, _u: DVector<f64>) -> DVector<f64> {
+            x.data.clone()
         }
 
         const STATE_VECTOR_SIZE: usize = 1;
@@ -232,7 +232,7 @@ mod tests {
         let sys = LinearFunc{a: 2.0};
         let feedback_sys = NegativeFeedback::new(sys, sys);
 
-        let output = feedback_sys.y(0.0, dvector![], dvector![1.0]);
+        let output = feedback_sys.y(0.0, &[].into_sv::<NegativeFeedback<LinearFunc, LinearFunc>>(), dvector![1.0]);
 
         assert!((output[0] - 0.4).abs() < 1e-15);
     }
@@ -245,7 +245,7 @@ mod tests {
         let feedback_sys = NegativeFeedback { 
             dirsys: exp1, revsys: exp2 };
 
-        let xdot = feedback_sys.xdot(0.0, dvector![1.0, 2.0], dvector![3.0]);
+        let xdot = feedback_sys.xdot(0.0, &[1.0, 2.0].into_sv::<NegativeFeedback<Exp, Exp>>(), dvector![3.0]);
 
         assert!(xdot == dvector![0.0, -1.0]);
     }
@@ -262,15 +262,15 @@ mod tests {
         let sys = LinearFunc{a: 2.0};
         let feedback_sys = NegativeFeedback::new(sys, sys);
 
-        assert!(feedback_sys.revy(0.0, dvector![], dvector![1.0]) == dvector![0.8])
+        assert!(feedback_sys.revy(0.0, [].into_sv::<NegativeFeedback<LinearFunc, LinearFunc>>(), dvector![1.0]) == dvector![0.8])
     }
 
     #[test]
     fn test_error() {
         let sys = LinearFunc{a: 2.0};
         let feedback_sys = NegativeFeedback::new(sys, sys);
-        dbg!(feedback_sys.error(0.0, dvector![], dvector![1.0]));
-        assert!((feedback_sys.error(0.0, dvector![], dvector![1.0]) - dvector![0.2]).abs().max() < 1e-4);        
+        dbg!(feedback_sys.error(0.0, [].into_sv::<NegativeFeedback<LinearFunc, LinearFunc>>(), dvector![1.0]));
+        assert!((feedback_sys.error(0.0,  [].into_sv::<NegativeFeedback<LinearFunc, LinearFunc>>(), dvector![1.0]) - dvector![0.2]).abs().max() < 1e-4);        
     }
 
     #[test]

@@ -30,11 +30,11 @@ impl<TDS: DynamicalSystem, BDS: DynamicalSystem> DynamicalSystem for Parallel<TD
     const OUTPUT_SIZE     : usize = TDS::INPUT_SIZE + BDS::INPUT_SIZE;
 
     fn xdot(&self, t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64> {
         let mut txdot = self.top_sys.xdot(
             t, 
-            StateVector::<Self>::new(x.clone()).topx().data,
+            &x.topx(),
             u.rows(0, TDS::INPUT_SIZE).into()
         );
 
@@ -42,7 +42,7 @@ impl<TDS: DynamicalSystem, BDS: DynamicalSystem> DynamicalSystem for Parallel<TD
             .extend(
                 self.bot_sys.xdot(
                     t, 
-                    StateVector::<Self>::new(x).botx().data, 
+                    &x.botx(), 
                     u.rows(TDS::INPUT_SIZE, BDS::INPUT_SIZE).into()
                 ).iter()
                 .copied()
@@ -52,18 +52,18 @@ impl<TDS: DynamicalSystem, BDS: DynamicalSystem> DynamicalSystem for Parallel<TD
     }
 
     fn y(&self, t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64> {
         let mut ty = self.top_sys.y(
             t, 
-            StateVector::<Self>::new(x.clone()).topx().data, 
+            &x.topx(), 
             u.rows(0, TDS::INPUT_SIZE).into());
 
         ty
             .extend(
                 self.bot_sys.y(
                     t, 
-                    StateVector::<Self>::new(x).botx().data, 
+                    &x.botx(), 
                     u.rows(TDS::INPUT_SIZE, BDS::INPUT_SIZE).into()
                 ).iter()
                 .copied()
@@ -118,12 +118,12 @@ mod tests {
     }
 
     impl DynamicalSystem for Exp {
-        fn xdot(&self, _t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
-            self.alpha * (u - x)
+        fn xdot(&self, _t: f64, x: &StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
+            self.alpha * (u - x.data.clone())
         }
 
-        fn y(&self, _t: f64, x: DVector<f64>, _u: DVector<f64>) -> DVector<f64> {
-            x
+        fn y(&self, _t: f64, x: &StateVector<Self>, _u: DVector<f64>) -> DVector<f64> {
+            x.data.clone()
         }
 
         const STATE_VECTOR_SIZE: usize = 1;
@@ -140,7 +140,7 @@ mod tests {
             bot_sys: Exp{alpha: 1.0}
         };
 
-        let xdot = par.xdot(0.0, dvector![1.0, 2.0], dvector![1.0, 0.0]);
+        let xdot = par.xdot(0.0, &[1.0, 2.0].into_sv::<Parallel<Exp, Exp>>(), dvector![1.0, 0.0]);
         assert!(xdot == dvector![0.0, -2.0])
     }
 
@@ -151,7 +151,7 @@ mod tests {
             bot_sys: Exp{alpha: 1.0}
         };
 
-        let y = par.y(0.0, dvector![1.0, 2.0], dvector![1.0, 0.0]);
+        let y = par.y(0.0, &[1.0, 2.0].into_sv::<Parallel<Exp, Exp>>(), dvector![1.0, 0.0]);
         assert!(y == dvector![1.0, 2.0])
     }
 

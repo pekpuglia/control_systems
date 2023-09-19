@@ -19,10 +19,10 @@ impl<DS1: DynamicalSystem, DS2: DynamicalSystem> Series<DS1, DS2>  {
         &self.dynsys2
     }
 
-    pub fn y1(&self, t: f64, x: DVector<f64>, u:DVector<f64>) -> DVector<f64> {
+    pub fn y1(&self, t: f64, x: StateVector<Self>, u:DVector<f64>) -> DVector<f64> {
         self.dynsys1.y(
             t, 
-            StateVector::<Self>::new(x.clone()).x1().data, 
+            &x.x1(), 
             u
         )
     }
@@ -40,18 +40,18 @@ where
     const OUTPUT_SIZE     : usize = DS2::OUTPUT_SIZE;
 
     fn xdot(&self, t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64> {
         let mut x1dot = self.dynsys1.xdot(
             t, 
-            StateVector::<Self>::new(x.clone()).x1().data, 
+            &x.x1(), 
             u.clone()
         );
         let x2dot = self.dynsys2.xdot(
             t, 
-            StateVector::<Self>::new(x.clone()).x2().data, 
+            &x.x2(), 
             self.dynsys1.y(
-                t, x.rows(0, DS1::STATE_VECTOR_SIZE).into(), u)
+                t, &x.x1(), u)
         );
 
         x1dot
@@ -60,17 +60,17 @@ where
     }
 
     fn y(&self, t: f64, 
-        x: DVector<f64>, 
+        x: &StateVector<Self>, 
         u: DVector<f64>) -> DVector<f64> {
         let u1 = self.dynsys1.y(
             t, 
-            StateVector::<Self>::new(x.clone()).x1().data, 
+            &x.x1(), 
             u
         );
 
         self.dynsys2.y(
             t, 
-            StateVector::<Self>::new(x.clone()).x2().data, 
+            &x.x2(), 
             u1)
     }
 }
@@ -119,12 +119,12 @@ mod tests {
     }
 
     impl DynamicalSystem for Exp {
-        fn xdot(&self, _t: f64, x: DVector<f64>, u: DVector<f64>) -> DVector<f64> {
-            self.alpha * (u - x)
+        fn xdot(&self, _t: f64, x: &StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
+            self.alpha * (u - x.data.clone())
         }
 
-        fn y(&self, _t: f64, x: DVector<f64>, _u: DVector<f64>) -> DVector<f64> {
-            x
+        fn y(&self, _t: f64, x: &StateVector<Self>, _u: DVector<f64>) -> DVector<f64> {
+            x.data.clone()
         }
 
         const STATE_VECTOR_SIZE: usize = 1;
@@ -141,7 +141,7 @@ mod tests {
 
     impl DynamicalSystem for SecondOrder {
         fn xdot(&self, _t: f64, 
-            x: DVector<f64>, 
+            x: &StateVector<Self>, 
             u: DVector<f64>) -> DVector<f64> {
             
             dvector![
@@ -151,7 +151,7 @@ mod tests {
         }
 
         fn y(&self, _t: f64, 
-            x: DVector<f64>, 
+            x: &StateVector<Self>, 
             _u: DVector<f64>) -> DVector<f64> {
             dvector![x[0]]
         }
@@ -170,7 +170,7 @@ mod tests {
             dynsys2: SecondOrder{ k: 1.0, c: 1.0 }
         };
 
-        let xdot = series.xdot(0.0, dvector![0.0,0.0, 1.0], dvector![1.0]);
+        let xdot = series.xdot(0.0, &[0.0,0.0, 1.0].into_sv::<Series<Exp, SecondOrder>>(), dvector![1.0]);
         dbg!(&xdot);
         assert!(xdot == DVector::from_row_slice(&[0.5, 1.0, -1.0]))
     }
@@ -182,7 +182,7 @@ mod tests {
             dynsys2: SecondOrder{ k: 1.0, c: 1.0 }
         };
 
-        let out = series.y(0.0, dvector![0.5, 0.7, 1.0], dvector![1.0]);
+        let out = series.y(0.0, &[0.5, 0.7, 1.0].into_sv::<Series<Exp, SecondOrder>>(), dvector![1.0]);
         assert!(out == [0.7].into())
     }
 
@@ -205,7 +205,7 @@ mod tests {
 
         let sys1 = Exp{ alpha: 0.5 };
 
-        assert!(series.y1(0.0, dvector![0.5, 0.7, 1.0], dvector![1.0]) == sys1.y(0.0, dvector![0.5], dvector![1.0]))
+        assert!(series.y1(0.0, [0.5, 0.7, 1.0].into_sv::<Series<Exp, SecondOrder>>(), dvector![1.0]) == sys1.y(0.0, &[0.5].into_sv::<Exp>(), dvector![1.0]))
     }
 
     #[test]
