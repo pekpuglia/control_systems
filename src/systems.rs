@@ -2,6 +2,31 @@ use nalgebra::{vector, SVector};
 
 use crate::DynamicalSystem;
 
+#[derive(Clone, Copy)]
+pub struct LinearFunc {
+    a: f64
+}
+
+impl LinearFunc {
+    pub const fn new(a: f64) -> LinearFunc {
+        LinearFunc { a }
+    }
+}
+
+impl DynamicalSystem<SVector<f64, 1>, SVector<f64, 0>, SVector<f64, 1>> for LinearFunc {
+    fn xdot(&self, t: f64, 
+        x: &SVector<f64, 0>, 
+        u: &SVector<f64, 1>) -> SVector<f64, 0> {
+        vector![]
+    }
+
+    fn y(&self, t: f64, 
+        x: &SVector<f64, 0>, 
+        u: &SVector<f64, 1>) -> SVector<f64, 1> {
+        self.a * u
+    }
+}
+
 pub struct Exp {
     alpha: f64
 }
