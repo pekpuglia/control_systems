@@ -7,7 +7,7 @@ pub use nalgebra::{DVector, dvector};
 //receive only inputvectors and outputvectors?
 
 mod state_vector;
-pub use state_vector::ComposableVector;
+pub use state_vector::{ComposableVector, VecConcat};
 
 pub trait DynamicalSystem<IN, ST, OUT> 
 where
@@ -25,14 +25,15 @@ where
         u: &IN) -> OUT;
 }
 
-mod systems;
+pub mod systems;
+
 
 mod series;
 pub use series::Series;
 
 
 mod feedback;
-// pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
+pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
 
-// mod parallel;
+mod parallel;
 // pub use parallel::Parallel;

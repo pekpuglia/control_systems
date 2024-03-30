@@ -1,12 +1,14 @@
 use crate::*;
 
+use self::state_vector::VecConcat;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Parallel<TDS, BDS> {
     top_sys: TDS,
     bot_sys: BDS
 }
 
-impl<TDS: DynamicalSystem, BDS: DynamicalSystem> Parallel<TDS, BDS> {
+impl<TDS, BDS> Parallel<TDS, BDS> {
     pub fn new(top_sys: TDS, bot_sys: BDS) -> Self {
         Self { top_sys, bot_sys }
     }
@@ -22,142 +24,63 @@ impl<TDS: DynamicalSystem, BDS: DynamicalSystem> Parallel<TDS, BDS> {
     //inspetores
 }
 
-impl<TDS: DynamicalSystem, BDS: DynamicalSystem> DynamicalSystem for Parallel<TDS, BDS> {
-    const STATE_VECTOR_SIZE: usize = TDS::STATE_VECTOR_SIZE + BDS::STATE_VECTOR_SIZE;
-
-    const INPUT_SIZE      : usize = TDS::INPUT_SIZE + BDS::INPUT_SIZE;
-
-    const OUTPUT_SIZE     : usize = TDS::INPUT_SIZE + BDS::INPUT_SIZE;
-
+impl<TIN, BIN, TST, BST, TOUT, BOUT, TDS, BDS> DynamicalSystem<VecConcat<TIN, BIN>, VecConcat<TST, BST>, VecConcat<TOUT, BOUT>> for Parallel<TDS, BDS> 
+where
+    TIN: ComposableVector,
+    BIN: ComposableVector,
+    TST: ComposableVector,
+    BST: ComposableVector,
+    TOUT: ComposableVector,
+    BOUT: ComposableVector,
+    TDS: DynamicalSystem<TIN, TST, TOUT>,
+    BDS: DynamicalSystem<BIN, BST, BOUT>
+{
     fn xdot(&self, t: f64, 
-        x: &StateVector<Self>, 
-        u: DVector<f64>) -> DVector<f64> {
-        let mut txdot = self.top_sys.xdot(
-            t, 
-            &x.topx(),
-            u.rows(0, TDS::INPUT_SIZE).into()
-        );
-
-        txdot
-            .extend(
-                self.bot_sys.xdot(
-                    t, 
-                    &x.botx(), 
-                    u.rows(TDS::INPUT_SIZE, BDS::INPUT_SIZE).into()
-                ).iter()
-                .copied()
-        );
-
-        txdot
-    }
-
-    fn y(&self, t: f64, 
-        x: &StateVector<Self>, 
-        u: DVector<f64>) -> DVector<f64> {
-        let mut ty = self.top_sys.y(
-            t, 
-            &x.topx(), 
-            u.rows(0, TDS::INPUT_SIZE).into());
-
-        ty
-            .extend(
-                self.bot_sys.y(
-                    t, 
-                    &x.botx(), 
-                    u.rows(TDS::INPUT_SIZE, BDS::INPUT_SIZE).into()
-                ).iter()
-                .copied()
-        );
-
-        ty
-    }
-}
-
-impl <TDS: DynamicalSystem, BDS: DynamicalSystem> StateVector<Parallel<TDS, BDS>> {
-    pub fn topx(&self) -> StateVector<TDS> {
-        self.data
-        .rows(
-            0, 
-            TDS::STATE_VECTOR_SIZE)
-        .as_slice()
-        .into_sv::<TDS>()
-    }
-
-    pub fn botx(&self) -> StateVector<BDS> {
-        self.data
-        .rows(
-            TDS::STATE_VECTOR_SIZE, 
-            BDS::STATE_VECTOR_SIZE)
-        .as_slice()
-        .into_sv::<BDS>()
-    }
-}
-
-impl<TDS: DynamicalSystem> StateVector<TDS>  {
-    pub fn parallel<BDS: DynamicalSystem>(&self, bot_sv: StateVector<BDS>) -> StateVector<Parallel<TDS, BDS>> {
-        let dataiter = self.data
-        .iter()
-        .chain(
-            bot_sv.data
-                .iter()
-        ).copied();
-        StateVector::new(
-            DVector::from_iterator(
-                TDS::STATE_VECTOR_SIZE + BDS::STATE_VECTOR_SIZE, 
-                dataiter)
+        x: &VecConcat<TST, BST>, 
+        u: &VecConcat<TIN, BIN>) -> VecConcat<TST, BST> {
+        self.top_sys.xdot(t, x.first(), u.first()).concat(
+            self.bot_sys.xdot(t, x.second(), u.second())
         )
+    }
+    
+    fn y(&self, t: f64, 
+        x: &VecConcat<TST, BST>, 
+        u: &VecConcat<TIN, BIN>) -> VecConcat<TOUT, BOUT> {
+            self.top_sys.y(t, x.first(), u.first()).concat(
+                self.bot_sys.y(t, x.second(), u.second())
+            )
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nalgebra::{DVector, dvector};
-    struct Exp {
-        alpha: f64
-    }
+    use nalgebra::{dvector, vector, DVector};
+    use crate::systems::Exp;
 
-    impl DynamicalSystem for Exp {
-        fn xdot(&self, _t: f64, x: &StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
-            self.alpha * (u - x.data.clone())
-        }
+    const exp05: Exp = Exp::new(0.5);
+    const exp1: Exp = Exp::new(1.0);
 
-        fn y(&self, _t: f64, x: &StateVector<Self>, _u: DVector<f64>) -> DVector<f64> {
-            x.data.clone()
-        }
-
-        const STATE_VECTOR_SIZE: usize = 1;
-
-        const INPUT_SIZE      : usize = 1;
-
-        const OUTPUT_SIZE     : usize = 1;
-    }
 
     #[test]
     fn test_parallel_xdot() {
         let par = Parallel {
-            top_sys: Exp{alpha: 0.5},
-            bot_sys: Exp{alpha: 1.0}
+            top_sys: exp05,
+            bot_sys: exp1
         };
 
-        let xdot = par.xdot(0.0, &[1.0, 2.0].into_sv::<Parallel<Exp, Exp>>(), dvector![1.0, 0.0]);
-        assert!(xdot == dvector![0.0, -2.0])
+        let xdot = par.xdot(0.0, &vector![1.0].concat(vector![2.0]), &vector![1.0].concat(vector![0.0]));
+        assert!(xdot.into_dvector() == dvector![0.0, -2.0])
     }
 
     #[test]
     fn test_parallel_y() {
         let par = Parallel {
-            top_sys: Exp{alpha: 0.5},
-            bot_sys: Exp{alpha: 1.0}
+            top_sys: exp05,
+            bot_sys: exp1
         };
 
-        let y = par.y(0.0, &[1.0, 2.0].into_sv::<Parallel<Exp, Exp>>(), dvector![1.0, 0.0]);
-        assert!(y == dvector![1.0, 2.0])
-    }
-
-    #[test]
-    fn test_parallel_sv_creation() {
-        let sv = [1.0].into_sv::<Exp>().parallel([2.0].into_sv::<Exp>());
-        assert!(sv.data == dvector![1.0, 2.0])
+        let y = par.y(0.0, &vector![1.0].concat(vector![2.0]), &vector![1.0].concat(vector![0.0]));
+        assert!(y.into_dvector() == dvector![1.0, 2.0])
     }
 }
