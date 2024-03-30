@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 pub use nalgebra::{DVector, dvector};
 
 //todo
@@ -9,29 +7,30 @@ pub use nalgebra::{DVector, dvector};
 //receive only inputvectors and outputvectors?
 
 mod state_vector;
-pub use state_vector::{StateVector, IntoSV};
+pub use state_vector::ComposableVector;
 
-pub trait DynamicalSystem {
+pub trait DynamicalSystem<IN, ST, OUT> 
+where
+    IN: ComposableVector,
+    ST: ComposableVector,
+    OUT: ComposableVector
+{
 
-    const STATE_VECTOR_SIZE: usize;
-    const INPUT_SIZE      : usize;
-    const OUTPUT_SIZE     : usize;
-    
     //accept references or StateVectors!!!
     fn xdot(&self, t: f64, 
-        x: &StateVector<Self>, 
-        u: DVector<f64>) -> DVector<f64>;
+        x: &ST, 
+        u: &IN) -> ST;
     fn y(&self, t: f64, 
-        x: &StateVector<Self>, 
-        u: DVector<f64>) -> DVector<f64>;
+        x: &ST, 
+        u: &IN) -> OUT;
 }
 
 mod series;
 pub use series::Series;
 
 
-mod feedback;
-pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
+// mod feedback;
+// pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
 
-mod parallel;
-pub use parallel::Parallel;
+// mod parallel;
+// pub use parallel::Parallel;
