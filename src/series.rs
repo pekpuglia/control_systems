@@ -86,51 +86,16 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nalgebra::{dvector, vector, DVector, SVector};
-    struct Exp {
-        alpha: f64
-    }
+    use crate::systems::*;
+    use nalgebra::{vector};
 
-    impl DynamicalSystem<SVector<f64, 1>, SVector<f64, 1>, SVector<f64, 1>> for Exp {
-        fn xdot(&self, t: f64, 
-            x: &SVector<f64, 1>, 
-            u: &SVector<f64, 1>) -> SVector<f64, 1> {
-            self.alpha * (u - x)
-        }
-        
-        fn y(&self, t: f64, 
-            x: &SVector<f64, 1>, 
-            u: &SVector<f64, 1>) -> SVector<f64, 1> {
-            *x
-        }
-    }
-
-    struct SecondOrder {
-        k: f64,
-        c: f64
-    }
-
-    impl DynamicalSystem<SVector<f64, 1>, SVector<f64, 2>, SVector<f64, 1>> for SecondOrder {
-        fn xdot(&self, t: f64, 
-            x: &SVector<f64, 2>, 
-            u: &SVector<f64, 1>) -> SVector<f64, 2> {
-            vector![
-                x.y,
-                -self.k * x.x - self.c * x.y
-            ]
-        }
-        
-        fn y(&self, t: f64, 
-            x: &SVector<f64, 2>, 
-            u: &SVector<f64, 1>) -> SVector<f64, 1> {
-            vector![x.x]
-        }
-    }
+    const EXP: Exp = Exp::new(0.5);
+    const SO: SecondOrder = SecondOrder::new(1.0, 1.0);
 
     #[test]
     fn test_series_xdot() {
         let series = Series::new(
-            Exp{alpha: 0.5}, SecondOrder{ k: 1.0, c: 1.0 }
+            EXP, SO
         );
 
         let xdot = series.xdot(0.0, &vector![0.0].concat(vector![0.0, 1.0]), &vector![1.0]);
@@ -141,10 +106,7 @@ mod tests {
 
     #[test]
     fn test_series_output() {
-        let series = Series::new(
-            Exp{alpha: 0.5},
-            SecondOrder{ k: 1.0, c: 1.0 }
-        );
+        let series = Series::new(EXP, SO);
 
         let out = series.y(0.0, &vector![0.5].concat(vector![0.7, 1.0]), &vector![1.0]);
         assert!(out == [0.7].into())
@@ -152,12 +114,9 @@ mod tests {
 
     #[test]
     fn test_y1() {
-        let series = Series::new(
-            Exp{alpha: 0.5},
-            SecondOrder{ k: 1.0, c: 1.0 }
-        );
+        let series = Series::new(EXP, SO);
 
-        let sys1 = Exp{ alpha: 0.5 };
+        let sys1 = series.ds1_ref();
 
         assert!(series.y1(0.0, &vector![0.5].concat(vector![0.7, 1.0]), &vector![1.0]) == sys1.y(0.0, &vector![0.5], &vector![1.0]))
     }

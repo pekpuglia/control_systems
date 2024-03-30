@@ -25,6 +25,8 @@ where
         u: &IN) -> OUT;
 }
 
+mod systems;
+
 mod series;
 pub use series::Series;
 
