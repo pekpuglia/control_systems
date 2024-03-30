@@ -55,19 +55,16 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nalgebra::{dvector, vector, DVector};
+    use nalgebra::{dvector, vector};
     use crate::systems::Exp;
 
-    const exp05: Exp = Exp::new(0.5);
-    const exp1: Exp = Exp::new(1.0);
+    const EXP05: Exp = Exp::new(0.5);
+    const EXP1: Exp = Exp::new(1.0);
 
 
     #[test]
     fn test_parallel_xdot() {
-        let par = Parallel {
-            top_sys: exp05,
-            bot_sys: exp1
-        };
+        let par = Parallel::new(EXP05, EXP1);
 
         let xdot = par.xdot(0.0, &vector![1.0].concat(vector![2.0]), &vector![1.0].concat(vector![0.0]));
         assert!(xdot.into_dvector() == dvector![0.0, -2.0])
@@ -75,10 +72,7 @@ mod tests {
 
     #[test]
     fn test_parallel_y() {
-        let par = Parallel {
-            top_sys: exp05,
-            bot_sys: exp1
-        };
+        let par = Parallel::new(EXP05, EXP1);
 
         let y = par.y(0.0, &vector![1.0].concat(vector![2.0]), &vector![1.0].concat(vector![0.0]));
         assert!(y.into_dvector() == dvector![1.0, 2.0])

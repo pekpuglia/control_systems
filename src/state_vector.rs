@@ -1,6 +1,6 @@
-use std::{fmt::format, ops::Sub, process::Output};
+use std::ops::Sub;
 
-use nalgebra::{SVector, Vector};
+use nalgebra::SVector;
 
 use crate::*;
 
@@ -27,9 +27,11 @@ impl<const N: usize> ComposableVector for SVector<f64, N> {
     
     fn from_dvector(v: DVector<f64>) -> Result<Self, String> {
         let s = Self::size();
-        match v.len() {
-            s => Ok(SVector::from_iterator(v.iter().copied())),
-            l => Err(format!("wrong size, expected {}, got {}", N, l))
+
+        if v.len() == s {
+            Ok(SVector::from_iterator(v.iter().copied()))
+        } else {
+            Err(format!("wrong size, expected {}, got {}", N, v.len()))
         }
     }
     
@@ -72,13 +74,14 @@ impl<CV0: ComposableVector, CV1: ComposableVector> ComposableVector for VecConca
     
     fn from_dvector(v: DVector<f64>) -> Result<Self, String> {
         let s = Self::size();
-        match v.len() {
-            s => {
-                let dv0 = v.rows(0, CV0::size()).into();
+        let l = v.len();
+
+        if s == l {
+            let dv0 = v.rows(0, CV0::size()).into();
                 let dv1 = v.rows(CV0::size(), CV1::size()).into();
                 Ok(Self(CV0::from_dvector(dv0).expect("dv0 should have the appropriate size"), CV1::from_dvector(dv1).expect("dv1 should have appropriate size")))
-            },
-            l => Err(format!("wrong size, expected {}, got {}", s, l))
+        } else {
+            Err(format!("wrong size, expected {}, got {}", s, l))
         }
     }
     

@@ -1,4 +1,4 @@
-use control_systems::{dvector, systems::SecondOrder, DVector, DynamicalSystem, NegativeFeedback, UnityFeedback, VecConcat};
+use control_systems::{systems::SecondOrder, DynamicalSystem, UnityFeedback, VecConcat};
 use nalgebra::{vector, Vector1, Vector2};
 fn main() {
     let test = SecondOrder::new(1.0, 1.0);
