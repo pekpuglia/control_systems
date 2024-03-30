@@ -4,7 +4,7 @@ use nalgebra::{SVector, Vector};
 
 use crate::*;
 
-//fazer conversão para DVector
+//constructor de VCat vazio
 //igualdade!!!
 //indexação!!!
 pub trait ComposableVector: Sub<Output=Self> + Sized + Copy {
