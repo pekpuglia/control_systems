@@ -4,32 +4,26 @@ use std::{marker::PhantomData, process::Output};
 use crate::*;
 
 use eqsolver::multivariable::MultiVarNewtonFD;
-use nalgebra::dvector;
+use nalgebra::{dvector, vector, SVector};
 
 use self::state_vector::VecConcat;
 
-// #[derive(Clone, Copy, Debug)]
-// pub struct UnitySystem<const SIZE: usize>;
+#[derive(Clone, Copy, Debug)]
+pub struct UnitySystem;
 
-// impl<const SIZE: usize> DynamicalSystem for UnitySystem<SIZE> {
-//     fn xdot(&self, _t: f64, 
-//         _x: &StateVector<Self>, 
-//         _u: DVector<f64>) -> DVector<f64> {
-//         dvector![]
-//     }
+impl<T: ComposableVector> DynamicalSystem<T, SVector<f64, 0>, T> for UnitySystem {
+    fn xdot(&self, t: f64, 
+        x: &SVector<f64, 0>, 
+        u: &T) -> SVector<f64, 0> {
+        vector![]
+    }
 
-//     fn y(&self, _t: f64, 
-//         _x: &StateVector<Self>, 
-//         u: DVector<f64>) -> DVector<f64> {
-//         u
-//     }
-
-//     const STATE_VECTOR_SIZE: usize = 0;
-
-//     const INPUT_SIZE      : usize = SIZE;
-
-//     const OUTPUT_SIZE     : usize = SIZE;
-// }
+    fn y(&self, t: f64, 
+        x: &SVector<f64, 0>, 
+        u: &T) -> T {
+        *u
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 //direct dynamical system, reverse dynamical system
@@ -93,14 +87,14 @@ where
     }
 }
 
-// pub type UnityFeedback<DDS, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
+pub type UnityFeedback<INOUT: ComposableVector, DST: ComposableVector, DDS> = NegativeFeedback<DDS, UnitySystem, DST, SVector<f64, 0>, INOUT, INOUT>;
 
-// impl<DDS: DynamicalSystem, const SIZE: usize> NegativeFeedback<DDS, UnitySystem<SIZE>> {
-//     pub fn new_unity_feedback(dirsys: DDS) -> NegativeFeedback<DDS, UnitySystem<SIZE>>
-//     {
-//         NegativeFeedback::new(dirsys, UnitySystem{})
-//     }
-// }
+impl<INOUT: ComposableVector, DST: ComposableVector, DDS: DynamicalSystem<INOUT, DST, INOUT>> UnityFeedback<INOUT, DST, DDS> {
+    pub fn new_unity_feedback(dirsys: DDS) -> Self
+    {
+        NegativeFeedback::new(dirsys, UnitySystem{})
+    }
+}
 
 impl<DDS, RDS, DST, RST, DOUTRIN, DINROUT>  DynamicalSystem<DINROUT, VecConcat<DST, RST>, DOUTRIN> for NegativeFeedback<DDS, RDS, DST, RST, DOUTRIN, DINROUT> 
 where
@@ -181,5 +175,11 @@ mod tests {
     fn test_error() {
         let feedback_sys = NegativeFeedback::new(LF, LF);
         assert!((feedback_sys.error(0.0, &vector![].concat(vector![]), &vector![1.0]) - vector![0.2]).abs().max() < 1e-4);        
+    }
+
+    #[test]
+    fn test_unity_feedback() {
+        let uf = UnityFeedback::new_unity_feedback(LF);
+        assert!(uf.y(0.0, &vector![].concat(vector![]), &vector![1.0]).x == (2.0/3.0))
     }
 }
