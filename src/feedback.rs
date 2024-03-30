@@ -117,7 +117,7 @@ where
         let output = self.y(t, x, u);
         let rev_out = self.revsys.y(t, x.second(), &output);
 
-        let dir_xdot = self.dirsys.xdot(t, x.first(), u);
+        let dir_xdot = self.dirsys.xdot(t, x.first(), &(*u - rev_out));
         let rev_xdot = self.revsys.xdot(t, x.second(), &output);
         VecConcat::new(dir_xdot, rev_xdot)
     }
@@ -139,108 +139,47 @@ where
     }
 }
 
-// #[cfg(test)]
-// mod tests {
+#[cfg(test)]
+mod tests {
+    use nalgebra::vector;
 
-//     use crate::DynamicalSystem;
-//     use super::*;
+    use super::*;
 
-//     #[derive(Clone, Copy)]
-//     struct LinearFunc {
-//         a: f64
-//     }
+    use crate::systems::{Exp, LinearFunc};
 
-//     impl DynamicalSystem for LinearFunc {
-//         fn xdot(&self, _t: f64, 
-//             _x: &StateVector<Self>, 
-//             _u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-//             dvector![]
-//         }
+    const LF: LinearFunc = LinearFunc::new(2.0);
 
-//         fn y(&self, _t: f64, 
-//             _x: &StateVector<Self>, 
-//             u: nalgebra::DVector<f64>) -> nalgebra::DVector<f64> {
-//             self.a * u
-//         }
+    const EXP: Exp = Exp::new(1.0);
 
-//         const STATE_VECTOR_SIZE: usize = 0;
+    #[test]
+    fn test_feedback_output() {
+        let feedback_sys = NegativeFeedback::new(LF, LF);
 
-//         const INPUT_SIZE      : usize = 1;
+        let output = feedback_sys.y(0.0, &vector![].concat(vector![]), &vector![1.0]);
 
-//         const OUTPUT_SIZE     : usize = 1;
-//     }
-//     #[derive(Clone, Copy)]
-//     struct Exp {
-//         alpha: f64
-//     }
+        assert!((output[0] - 0.4).abs() < 1e-15);
+    }
 
-//     impl DynamicalSystem for Exp {
-//         fn xdot(&self, _t: f64, x: &StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
-//             self.alpha * (u - x.data.clone())
-//         }
+    #[test]
+    fn test_feedback_xdot() {
 
-//         fn y(&self, _t: f64, x: &StateVector<Self>, _u: DVector<f64>) -> DVector<f64> {
-//             x.data.clone()
-//         }
+        let feedback_sys = NegativeFeedback::new(EXP, EXP);
 
-//         const STATE_VECTOR_SIZE: usize = 1;
+        let xdot = feedback_sys.xdot(0.0, &vector![1.0].concat(vector![2.0]), &vector![3.0]);
+        dbg!(xdot);
+        assert!(xdot.into_dvector() == dvector![0.0, -1.0]);
+    }
 
-//         const INPUT_SIZE      : usize = 1;
+    #[test]
+    fn test_revy() {
+        let feedback_sys = NegativeFeedback::new(LF, LF);
 
-//         const OUTPUT_SIZE     : usize = 1;
-//     }
+        assert!(feedback_sys.revy(0.0, &vector![].concat(vector![]), &vector![1.0]).into_dvector() == dvector![0.8])
+    }
 
-//     #[test]
-//     fn test_feedback_output() {
-//         let sys = LinearFunc{a: 2.0};
-//         let feedback_sys = NegativeFeedback::new(sys, sys);
-
-//         let output = feedback_sys.y(0.0, &[].into_sv::<NegativeFeedback<LinearFunc, LinearFunc>>(), dvector![1.0]);
-
-//         assert!((output[0] - 0.4).abs() < 1e-15);
-//     }
-
-//     #[test]
-//     fn test_feedback_xdot() {
-//         let exp1 = Exp{ alpha: 1.0 };
-//         let exp2 = Exp{ alpha: 1.0 };
-
-//         let feedback_sys = NegativeFeedback { 
-//             dirsys: exp1, revsys: exp2 };
-
-//         let xdot = feedback_sys.xdot(0.0, &[1.0, 2.0].into_sv::<NegativeFeedback<Exp, Exp>>(), dvector![3.0]);
-
-//         assert!(xdot == dvector![0.0, -1.0]);
-//     }
-
-//     #[test]
-//     fn test_ss_slicing() {
-//         let sv = StateVector::<NegativeFeedback<Exp, Exp>>::new(dvector![1.0, 2.0]);
-//         assert!(sv.dirx().data == [1.0].into());
-//         assert!(sv.revx().data == [2.0].into())
-//     }
-
-//     #[test]
-//     fn test_revy() {
-//         let sys = LinearFunc{a: 2.0};
-//         let feedback_sys = NegativeFeedback::new(sys, sys);
-
-//         assert!(feedback_sys.revy(0.0, [].into_sv::<NegativeFeedback<LinearFunc, LinearFunc>>(), dvector![1.0]) == dvector![0.8])
-//     }
-
-//     #[test]
-//     fn test_error() {
-//         let sys = LinearFunc{a: 2.0};
-//         let feedback_sys = NegativeFeedback::new(sys, sys);
-//         dbg!(feedback_sys.error(0.0, [].into_sv::<NegativeFeedback<LinearFunc, LinearFunc>>(), dvector![1.0]));
-//         assert!((feedback_sys.error(0.0,  [].into_sv::<NegativeFeedback<LinearFunc, LinearFunc>>(), dvector![1.0]) - dvector![0.2]).abs().max() < 1e-4);        
-//     }
-
-//     #[test]
-//     fn test_feedback_builder() {
-//         let sv_feedback = [1.0].into_sv::<Exp>()
-//             .feedback([2.0].into_sv::<Exp>());
-
-//         assert!(sv_feedback.data == dvector![1.0, 2.0])
-//     }
-// }
+    #[test]
+    fn test_error() {
+        let feedback_sys = NegativeFeedback::new(LF, LF);
+        assert!((feedback_sys.error(0.0, &vector![].concat(vector![]), &vector![1.0]) - vector![0.2]).abs().max() < 1e-4);        
+    }
+}
