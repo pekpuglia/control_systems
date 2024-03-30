@@ -29,7 +29,7 @@ mod series;
 pub use series::Series;
 
 
-// mod feedback;
+mod feedback;
 // pub use feedback::{NegativeFeedback, UnitySystem, UnityFeedback};
 
 // mod parallel;
