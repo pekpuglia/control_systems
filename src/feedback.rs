@@ -1,5 +1,5 @@
 use core::panic;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, process::Output};
 
 use crate::*;
 
@@ -60,16 +60,16 @@ where
     DDS: DynamicalSystem<DINROUT, DST, DOUTRIN>,
     RDS: DynamicalSystem<DOUTRIN, RST, DINROUT>
 {
-    // fn residue(&self, t: f64, y: &DOUTRIN, x: &VecConcat<DST, RST>, u: DINROUT) -> DVector<f64> {
-    //     y.clone() - self.dirsys.y(
-    //         t, 
-    //         &x.dirx(),
-    //         u - self.revsys.y(
-    //             t, 
-    //             &x.revx(), 
-    //             y)
-    //         )
-    // }
+    fn residue(&self, t: f64, y: &DOUTRIN, x: &VecConcat<DST, RST>, u: &DINROUT) -> DVector<f64> {
+        (*y - self.dirsys.y(
+            t, 
+            &x.first(),
+            &(*u - self.revsys.y(
+                t, 
+                &x.second(), 
+                y))
+            )).into_dvector()
+    }
 
     pub fn new(dirsys: DDS, revsys: RDS) -> Self {
         NegativeFeedback { dirsys, revsys, _phantom_dir_st: PhantomData, _phantom_rev_st: PhantomData, _phantom_dout_rin: PhantomData, _phantom_din_rout: PhantomData }
@@ -83,14 +83,14 @@ where
         &self.revsys
     }
 
-    // pub fn revy(&self, t: f64, x: VecConcat<DST, RST>, u: DVector<f64>) -> DINROUT {
-    //     let output = self.y(t, &x, u.clone());
-    //     self.revsys.y(t, &x.revx(), output.clone())
-    // }
+    pub fn revy(&self, t: f64, x: &VecConcat<DST, RST>, u: &DINROUT) -> DINROUT {
+        let output = self.y(t, x, u);
+        self.revsys.y(t, x.second(), &output)
+    }
 
-    // pub fn error(&self, t: f64, x: StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
-    //     u.clone() - self.revy(t, x, u)
-    // }
+    pub fn error(&self, t: f64, x: &VecConcat<DST, RST>, u: &DINROUT) -> DINROUT {
+        *u - self.revy(t, x, u)
+    }
 }
 
 // pub type UnityFeedback<DDS, const SIZE: usize> = NegativeFeedback<DDS, UnitySystem<SIZE>>;
@@ -114,92 +114,30 @@ where
     fn xdot(&self, t: f64, 
         x: &VecConcat<DST, RST>, 
         u: &DINROUT) -> VecConcat<DST, RST> {
-        todo!()
+        let output = self.y(t, x, u);
+        let rev_out = self.revsys.y(t, x.second(), &output);
+
+        let dir_xdot = self.dirsys.xdot(t, x.first(), u);
+        let rev_xdot = self.revsys.xdot(t, x.second(), &output);
+        VecConcat::new(dir_xdot, rev_xdot)
     }
 
     fn y(&self, t: f64, 
         x: &VecConcat<DST, RST>, 
         u: &DINROUT) -> DOUTRIN {
-        todo!()
+        DOUTRIN::from_dvector(
+            MultiVarNewtonFD::new(
+            |output| self.residue(t, 
+                                        &DOUTRIN::from_dvector(output).expect("output should have size equal to DOUTRIN"), x, u)
+            )
+            .solve(self.dirsys.y(
+                t, 
+                &x.first(), 
+                u).into_dvector()
+            ).expect("solver should find a solution")
+        ).expect("result should have appropriate size")
     }
-//     const STATE_VECTOR_SIZE: usize = DDS::STATE_VECTOR_SIZE + RDS::STATE_VECTOR_SIZE;
-
-//     const INPUT_SIZE      : usize = DDS::INPUT_SIZE;
-
-//     const OUTPUT_SIZE     : usize = DDS::OUTPUT_SIZE;
-
-//     fn xdot(&self, t: f64, 
-//         x: &StateVector<Self>, 
-//         u: DVector<f64>) -> DVector<f64> {
-        
-//         let output = self.y(t, x.clone(), u.clone());
-//         let rev_output = self.revsys.y(t, &x.revx(), output.clone());
-
-//         let mut dirxdot = self.dirsys.xdot(
-//             t, 
-//             &x.dirx(), 
-//             u - rev_output
-//         );
-
-//         let revxdot = self.revsys.xdot(
-//             t, 
-//             &x.revx(),
-//             output
-//         );
-
-//         dirxdot
-//             .extend(revxdot.iter().copied());
-//         dirxdot
-//     }
-
-//     fn y(&self, t: f64, 
-//         x: &StateVector<Self>, 
-//         u: DVector<f64>) -> DVector<f64> {
-//         MultiVarNewtonFD::new(
-//             |output| self.residue(t, output, x, u.clone())
-//         )
-//         .solve(self.dirsys.y(
-//             t, 
-//             &x.dirx(), 
-//             u.clone())
-//         )
-//         .unwrap()
-//     }
 }
-
-// impl<DDS: DynamicalSystem, RDS: DynamicalSystem> StateVector<NegativeFeedback<DDS, RDS>>  {
-//     pub fn dirx(&self) -> StateVector<DDS> {
-//         self.data
-//         .rows(
-//             0, 
-//             DDS::STATE_VECTOR_SIZE)
-//         .as_slice()
-//         .into_sv::<DDS>()
-//     }
-    
-//     pub fn revx(&self) -> StateVector<RDS> {
-//         self.data
-//         .rows(
-//             DDS::STATE_VECTOR_SIZE, 
-//             RDS::STATE_VECTOR_SIZE)
-//         .as_slice()
-//         .into_sv::<RDS>() 
-//     }
-// }
-
-// impl<DDS: DynamicalSystem> StateVector<DDS>  {
-//     pub fn feedback<RDS: DynamicalSystem>(&self, rev_sv: StateVector<RDS>) -> StateVector<NegativeFeedback<DDS, RDS>> {
-//         let dataiter = self.data
-//         .iter()
-//         .chain(
-//             rev_sv.data
-//                 .iter()
-//         ).copied();
-//         StateVector::new(DVector::from_iterator(
-//                 DDS::STATE_VECTOR_SIZE + RDS::STATE_VECTOR_SIZE, 
-//                 dataiter))
-//     }
-// }
 
 // #[cfg(test)]
 // mod tests {
