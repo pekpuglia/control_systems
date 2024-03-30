@@ -26,6 +26,8 @@ pub trait DynamicalSystem {
         u: DVector<f64>) -> DVector<f64>;
 }
 
+mod systems;
+
 mod series;
 pub use series::Series;
 

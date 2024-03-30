@@ -113,62 +113,17 @@ impl<System: DynamicalSystem> StateVector<System> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nalgebra::{DVector, dvector};
-    struct Exp {
-        alpha: f64
-    }
+    use crate::systems::*;
+    use nalgebra::{vector};
 
-    impl DynamicalSystem for Exp {
-        fn xdot(&self, _t: f64, x: &StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
-            self.alpha * (u - x.data.clone())
-        }
-
-        fn y(&self, _t: f64, x: &StateVector<Self>, _u: DVector<f64>) -> DVector<f64> {
-            x.data.clone()
-        }
-
-        const STATE_VECTOR_SIZE: usize = 1;
-
-        const INPUT_SIZE      : usize = 1;
-
-        const OUTPUT_SIZE     : usize = 1;
-    }
-
-    struct SecondOrder {
-        k: f64,
-        c: f64
-    }
-
-    impl DynamicalSystem for SecondOrder {
-        fn xdot(&self, _t: f64, 
-            x: &StateVector<Self>, 
-            u: DVector<f64>) -> DVector<f64> {
-            
-            dvector![
-                x[1],
-                -self.k*x[0]-self.c*x[1]+u[0]
-            ]
-        }
-
-        fn y(&self, _t: f64, 
-            x: &StateVector<Self>, 
-            _u: DVector<f64>) -> DVector<f64> {
-            dvector![x[0]]
-        }
-
-        const STATE_VECTOR_SIZE: usize = 2;
-
-        const INPUT_SIZE      : usize = 1;
-
-        const OUTPUT_SIZE     : usize = 1;
-    }
+    const EXP: Exp = Exp::new(0.5);
+    const SO: SecondOrder = SecondOrder::new(1.0, 1.0);
 
     #[test]
     fn test_series_xdot() {
-        let series = Series {
-            dynsys1: Exp{alpha: 0.5},
-            dynsys2: SecondOrder{ k: 1.0, c: 1.0 }
-        };
+        let series = Series::new(
+            EXP, SO
+        );
 
         let xdot = series.xdot(0.0, &[0.0,0.0, 1.0].into_sv::<Series<Exp, SecondOrder>>(), dvector![1.0]);
         dbg!(&xdot);
@@ -177,10 +132,7 @@ mod tests {
 
     #[test]
     fn test_series_output() {
-        let series = Series {
-            dynsys1: Exp{alpha: 0.5},
-            dynsys2: SecondOrder{ k: 1.0, c: 1.0 }
-        };
+        let series = Series::new(EXP, SO);
 
         let out = series.y(0.0, &[0.5, 0.7, 1.0].into_sv::<Series<Exp, SecondOrder>>(), dvector![1.0]);
         assert!(out == [0.7].into())
@@ -198,12 +150,9 @@ mod tests {
 
     #[test]
     fn test_y1() {
-        let series = Series {
-            dynsys1: Exp{alpha: 0.5},
-            dynsys2: SecondOrder{ k: 1.0, c: 1.0 }
-        };
+        let series = Series::new(EXP, SO);
 
-        let sys1 = Exp{ alpha: 0.5 };
+        let sys1 = series.ds1_ref();
 
         assert!(series.y1(0.0, [0.5, 0.7, 1.0].into_sv::<Series<Exp, SecondOrder>>(), dvector![1.0]) == sys1.y(0.0, &[0.5].into_sv::<Exp>(), dvector![1.0]))
     }
