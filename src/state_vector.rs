@@ -1,6 +1,6 @@
-use std::{ops::Sub, process::Output};
+use std::{fmt::format, ops::Sub, process::Output};
 
-use nalgebra::SVector;
+use nalgebra::{SVector, Vector};
 
 use crate::*;
 
@@ -13,12 +13,28 @@ pub trait ComposableVector: Sub<Output=Self> + Sized + Copy {
     }
 
     fn into_dvector(&self) -> DVector<f64>;
+
+    fn from_dvector(v: DVector<f64>) -> Result<Self, String>;
+
+    fn size() -> usize;
 }
 
 
 impl<const N: usize> ComposableVector for SVector<f64, N> {
     fn into_dvector(&self) -> DVector<f64> {
         DVector::from_row_slice(self.data.as_slice())
+    }
+    
+    fn from_dvector(v: DVector<f64>) -> Result<Self, String> {
+        let s = Self::size();
+        match v.len() {
+            s => Ok(SVector::from_iterator(v.iter().copied())),
+            l => Err(format!("wrong size, expected {}, got {}", N, l))
+        }
+    }
+    
+    fn size() -> usize {
+        N
     }
 }
 
@@ -52,6 +68,41 @@ impl<CV0: ComposableVector, CV1: ComposableVector> ComposableVector for VecConca
         let mut ret = self.0.into_dvector();
         ret.extend(self.1.into_dvector().iter().copied());
         ret
+    }
+    
+    fn from_dvector(v: DVector<f64>) -> Result<Self, String> {
+        let s = Self::size();
+        match v.len() {
+            s => {
+                let dv0 = v.rows(0, CV0::size()).into();
+                let dv1 = v.rows(CV0::size(), CV1::size()).into();
+                Ok(Self(CV0::from_dvector(dv0).expect("dv0 should have the appropriate size"), CV1::from_dvector(dv1).expect("dv1 should have appropriate size")))
+            },
+            l => Err(format!("wrong size, expected {}, got {}", s, l))
+        }
+    }
+    
+    fn size() -> usize {
+        CV0::size() + CV1::size()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use nalgebra::{dvector, SVector};
+
+    use crate::ComposableVector;
+
+    use super::VecConcat;
+
+    #[test]
+    fn test_from_dvector() {
+        let dv = dvector![1.0, 2.0, 3.0];
+        let vc = VecConcat::<SVector<f64, 1>, SVector<f64, 2>>::from_dvector(dv);
+        assert!(vc.is_ok());
+        assert!(vc.as_ref().unwrap().0.x == 1.0);
+        assert!(vc.as_ref().unwrap().1.x == 2.0);
+        assert!(vc.as_ref().unwrap().1.y == 3.0)
     }
 }
 
