@@ -26,8 +26,8 @@ pub trait DynamicalSystem
 pub mod systems;
 
 
-// mod series;
-// pub use series::Series;
+mod series;
+pub use series::Series;
 
 
 // mod feedback;

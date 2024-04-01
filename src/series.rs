@@ -5,37 +5,23 @@ use crate::*;
 
 use self::state_vector::VecConcat;
 #[derive(Clone, Copy, Debug)]
-pub struct Series<DS1, IN1, ST1, OUT1IN2, DS2, ST2, OUT2>
+pub struct Series<DS1, DS2, OUT1IN2: ComposableVector>
 where
-    IN1: ComposableVector,
-    ST1: ComposableVector,
-    OUT1IN2: ComposableVector,
-    ST2: ComposableVector,
-    OUT2: ComposableVector,
-    DS1: DynamicalSystem<IN1, ST1, OUT1IN2>,
-    DS2: DynamicalSystem<OUT1IN2, ST2, OUT2>
+    DS1: DynamicalSystem<OUT = OUT1IN2>,
+    DS2: DynamicalSystem<IN = OUT1IN2>
 {
     dynsys1: DS1,
-    dynsys2: DS2,
-    _phantom_in1: PhantomData<IN1>,
-    _phantom_st1: PhantomData<ST1>,
-    _phantom_out1in2: PhantomData<OUT1IN2>,
-    _phantom_st2: PhantomData<ST2>,
-    _phantom_out2: PhantomData<OUT2>,
+    dynsys2: DS2
 }
 
-impl<DS1, IN1, ST1, OUT1IN2, DS2, ST2, OUT2> Series<DS1, IN1, ST1, OUT1IN2, DS2, ST2, OUT2>
+impl<DS1, OUT1IN2, DS2> Series<DS1, DS2, OUT1IN2>
 where
-    IN1: ComposableVector,
-    ST1: ComposableVector,
     OUT1IN2: ComposableVector,
-    ST2: ComposableVector,
-    OUT2: ComposableVector,
-    DS1: DynamicalSystem<IN1, ST1, OUT1IN2>,
-    DS2: DynamicalSystem<OUT1IN2, ST2, OUT2>
+    DS1: DynamicalSystem<OUT = OUT1IN2>,
+    DS2: DynamicalSystem<IN = OUT1IN2>
 {
     pub fn new(ds1: DS1, ds2: DS2) -> Self {
-        Series { dynsys1: ds1, dynsys2: ds2, _phantom_in1: PhantomData, _phantom_st1: PhantomData, _phantom_out1in2: PhantomData, _phantom_st2: PhantomData, _phantom_out2: PhantomData }
+        Series { dynsys1: ds1, dynsys2: ds2 }
     }
     pub fn ds1_ref(&self) -> &DS1 {
         &self.dynsys1
@@ -45,7 +31,7 @@ where
         &self.dynsys2
     }
 
-    pub fn y1(&self, t: f64, x: &VecConcat<ST1, ST2>, u: &IN1) -> OUT1IN2 {
+    pub fn y1(&self, t: f64, x: &VecConcat<DS1::ST, DS2::ST>, u: &DS1::IN) -> OUT1IN2 {
         self.dynsys1.y(
             t, 
             x.first(), 
@@ -54,33 +40,34 @@ where
     }
 }
 
-impl<DS1, IN1, ST1, OUT1IN2, DS2, ST2, OUT2> DynamicalSystem<IN1, VecConcat<ST1, ST2>, OUT2> for Series<DS1, IN1, ST1, OUT1IN2, DS2, ST2, OUT2> 
+impl<DS1, OUT1IN2, DS2> DynamicalSystem for Series<DS1, DS2, OUT1IN2> 
 where
-    IN1: ComposableVector,
-    ST1: ComposableVector,
     OUT1IN2: ComposableVector,
-    ST2: ComposableVector,
-    OUT2: ComposableVector,
-    DS1: DynamicalSystem<IN1, ST1, OUT1IN2>,
-    DS2: DynamicalSystem<OUT1IN2, ST2, OUT2>
+    DS1: DynamicalSystem<OUT = OUT1IN2>,
+    DS2: DynamicalSystem<IN = OUT1IN2> 
 {
     fn xdot(&self, t: f64, 
-        x: &VecConcat<ST1, ST2>, 
-        u: &IN1) -> VecConcat<ST1, ST2> {
+        x: &Self::ST, 
+        u: &Self::IN) -> Self::ST {
         self.dynsys1.xdot(t, x.first(), u).concat(
             self.dynsys2.xdot(t, x.second(), 
                 &self.dynsys1.y(
                     t, x.first(), u
                 )
-            )
-        )
+            ))
     }
-
+    
     fn y(&self, t: f64, 
-        x: &VecConcat<ST1, ST2>, 
-        u: &IN1) -> OUT2 {
-        self.dynsys2.y(t, x.second(), &self.dynsys1.y(t, x.first(), u))
+        x: &Self::ST, 
+        u: &Self::IN) -> Self::OUT {
+            self.dynsys2.y(t, x.second(), &self.dynsys1.y(t, x.first(), u))
     }
+    
+    type IN = DS1::IN;
+    
+    type ST = VecConcat<DS1::ST, DS2::ST>;
+    
+    type OUT = DS2::OUT;
 }
 
 #[cfg(test)]
@@ -120,4 +107,7 @@ mod tests {
 
         assert!(series.y1(0.0, &vector![0.5].concat(vector![0.7, 1.0]), &vector![1.0]) == sys1.y(0.0, &vector![0.5], &vector![1.0]))
     }
+
+    //TODO BOTAR EM MACRO
+    type series = Series<Exp, SecondOrder, <Exp as DynamicalSystem>::OUT>;
 }
