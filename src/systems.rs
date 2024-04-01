@@ -1,4 +1,4 @@
-use nalgebra::{vector, SVector};
+use nalgebra::{vector, SVector, Vector1, Vector2};
 
 use crate::DynamicalSystem;
 
@@ -13,7 +13,7 @@ impl LinearFunc {
     }
 }
 
-impl DynamicalSystem<SVector<f64, 1>, SVector<f64, 0>, SVector<f64, 1>> for LinearFunc {
+impl DynamicalSystem for LinearFunc {
     fn xdot(&self, t: f64, 
         x: &SVector<f64, 0>, 
         u: &SVector<f64, 1>) -> SVector<f64, 0> {
@@ -25,6 +25,12 @@ impl DynamicalSystem<SVector<f64, 1>, SVector<f64, 0>, SVector<f64, 1>> for Line
         u: &SVector<f64, 1>) -> SVector<f64, 1> {
         self.a * u
     }
+    
+    type IN = Vector1<f64>;
+    
+    type ST = SVector<f64, 0>;
+    
+    type OUT = Vector1<f64>;
 }
 
 pub struct Exp {
@@ -37,7 +43,7 @@ impl Exp {
     }
 }
 
-impl DynamicalSystem<SVector<f64, 1>, SVector<f64, 1>, SVector<f64, 1>> for Exp {
+impl DynamicalSystem for Exp {
     fn xdot(&self, t: f64, 
         x: &SVector<f64, 1>, 
         u: &SVector<f64, 1>) -> SVector<f64, 1> {
@@ -49,6 +55,12 @@ impl DynamicalSystem<SVector<f64, 1>, SVector<f64, 1>, SVector<f64, 1>> for Exp 
         u: &SVector<f64, 1>) -> SVector<f64, 1> {
         *x
     }
+    
+    type IN = Vector1<f64>;
+    
+    type ST = Vector1<f64>;
+    
+    type OUT = Vector1<f64>;
 }
 
 pub struct SecondOrder {
@@ -62,7 +74,7 @@ impl SecondOrder {
     }
 }
 
-impl DynamicalSystem<SVector<f64, 1>, SVector<f64, 2>, SVector<f64, 1>> for SecondOrder {
+impl DynamicalSystem for SecondOrder {
     fn xdot(&self, t: f64, 
         x: &SVector<f64, 2>, 
         u: &SVector<f64, 1>) -> SVector<f64, 2> {
@@ -77,4 +89,10 @@ impl DynamicalSystem<SVector<f64, 1>, SVector<f64, 2>, SVector<f64, 1>> for Seco
         u: &SVector<f64, 1>) -> SVector<f64, 1> {
         vector![x.x]
     }
+    
+    type IN = Vector1<f64>;
+    
+    type ST = Vector2<f64>;
+    
+    type OUT = Vector1<f64>;
 }
