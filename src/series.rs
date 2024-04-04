@@ -108,6 +108,11 @@ mod tests {
         assert!(series.y1(0.0, &vector![0.5].concat(vector![0.7, 1.0]), &vector![1.0]) == sys1.y(0.0, &vector![0.5], &vector![1.0]))
     }
 
-    //TODO BOTAR EM MACRO
-    type series = Series<Exp, SecondOrder, <Exp as DynamicalSystem>::OUT>;
+    //TODO BOTAR EM MACRO - testar
+    type SESO = Series<Exp, SecondOrder, <Exp as DynamicalSystem>::IN>;
+    #[test]
+    fn test_type_alias() {
+        let seso = SESO::new(EXP, SO);
+        
+    }
 }
