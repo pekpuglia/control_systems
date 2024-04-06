@@ -5,6 +5,9 @@ pub use nalgebra::{DVector, dvector};
 //make it size-safe!
 //system lib?
 //receive only inputvectors and outputvectors?
+//idea: do as in fsm where input/output types 
+//must be generic for concrete types if they want to be 
+//composable
 
 mod state_vector;
 pub use state_vector::{ComposableVector, VecConcat};
