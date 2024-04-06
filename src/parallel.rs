@@ -113,32 +113,15 @@ impl<TDS: DynamicalSystem> StateVector<TDS>  {
 mod tests {
     use super::*;
     use nalgebra::{DVector, dvector};
-    struct Exp {
-        alpha: f64
-    }
 
-    impl DynamicalSystem for Exp {
-        fn xdot(&self, _t: f64, x: &StateVector<Self>, u: DVector<f64>) -> DVector<f64> {
-            self.alpha * (u - x.data.clone())
-        }
+    use crate::systems::Exp;
 
-        fn y(&self, _t: f64, x: &StateVector<Self>, _u: DVector<f64>) -> DVector<f64> {
-            x.data.clone()
-        }
-
-        const STATE_VECTOR_SIZE: usize = 1;
-
-        const INPUT_SIZE      : usize = 1;
-
-        const OUTPUT_SIZE     : usize = 1;
-    }
+    const EXP05: Exp = Exp::new(0.5);
+    const EXP1: Exp = Exp::new(1.0);
 
     #[test]
     fn test_parallel_xdot() {
-        let par = Parallel {
-            top_sys: Exp{alpha: 0.5},
-            bot_sys: Exp{alpha: 1.0}
-        };
+        let par = Parallel::new(EXP05, EXP1);
 
         let xdot = par.xdot(0.0, &[1.0, 2.0].into_sv::<Parallel<Exp, Exp>>(), dvector![1.0, 0.0]);
         assert!(xdot == dvector![0.0, -2.0])
@@ -146,10 +129,7 @@ mod tests {
 
     #[test]
     fn test_parallel_y() {
-        let par = Parallel {
-            top_sys: Exp{alpha: 0.5},
-            bot_sys: Exp{alpha: 1.0}
-        };
+        let par = Parallel::new(EXP05, EXP1);
 
         let y = par.y(0.0, &[1.0, 2.0].into_sv::<Parallel<Exp, Exp>>(), dvector![1.0, 0.0]);
         assert!(y == dvector![1.0, 2.0])
